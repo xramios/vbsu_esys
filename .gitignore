@@ -8,6 +8,7 @@
 .idea
 .venv
 __pycache__
+artifacts
 
 # BlueJ files
 *.ctxt
