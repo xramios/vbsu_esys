@@ -252,7 +252,7 @@ class UniversityDatabaseSeeder:
         for i in tqdm(range(student_count), desc="Creating student users", unit="user"):
             email = fake.unique.email()
             # Simple password hash simulation
-            password = bcrypt.hashpw(fake.password(length=20, special_chars=False, upper_case=False).encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
+            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
             role = USER_ROLES['STUDENT']
             
             query = """
@@ -271,7 +271,7 @@ class UniversityDatabaseSeeder:
         for i in tqdm(range(faculty_count), desc="Creating faculty users", unit="user"):
             email = fake.unique.email()
             # Simple password hash simulation
-            password = bcrypt.hashpw(fake.password(length=20, special_chars=False, upper_case=False).encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
+            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
             role = USER_ROLES['FACULTY']
             
             query = """
@@ -290,7 +290,7 @@ class UniversityDatabaseSeeder:
         for i in tqdm(range(registrar_count), desc="Creating registrar users", unit="user"):
             email = fake.unique.email()
             # Simple password hash simulation
-            password = bcrypt.hashpw(fake.password(length=20, special_chars=False, upper_case=False).encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
+            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
             role = USER_ROLES['REGISTRAR']
             
             query = """
