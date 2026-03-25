@@ -1,0 +1,153 @@
+package com.group5.paul_esys.modules.enrollments.services;
+
+import com.group5.paul_esys.modules.enums.EnrollmentStatus;
+import com.group5.paul_esys.modules.enrollments.model.Enrollment;
+import com.group5.paul_esys.modules.enrollments.utils.EnrollmentUtils;
+import com.group5.paul_esys.modules.users.services.ConnectionService;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class EnrollmentService {
+
+  private final Connection conn = ConnectionService.getConnection();
+  private final Logger logger = LoggerFactory.getLogger(EnrollmentService.class);
+
+  public List<Enrollment> getAllEnrollments() {
+    List<Enrollment> enrollments = new ArrayList<>();
+    try {
+      PreparedStatement ps = conn.prepareStatement("SELECT * FROM enrollments ORDER BY created_at DESC");
+      ResultSet rs = ps.executeQuery();
+      
+      while (rs.next()) {
+        enrollments.add(EnrollmentUtils.mapResultSetToEnrollment(rs));
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+    return enrollments;
+  }
+
+  public Optional<Enrollment> getEnrollmentById(Long id) {
+    try {
+      PreparedStatement ps = conn.prepareStatement("SELECT * FROM enrollments WHERE id = ?");
+      ps.setLong(1, id);
+      
+      ResultSet rs = ps.executeQuery();
+      if (rs.next()) {
+        return Optional.of(EnrollmentUtils.mapResultSetToEnrollment(rs));
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+    return Optional.empty();
+  }
+
+  public List<Enrollment> getEnrollmentsByStudent(String studentId) {
+    List<Enrollment> enrollments = new ArrayList<>();
+    try {
+      PreparedStatement ps = conn.prepareStatement("SELECT * FROM enrollments WHERE student_id = ? ORDER BY created_at DESC");
+      ps.setString(1, studentId);
+      
+      ResultSet rs = ps.executeQuery();
+      while (rs.next()) {
+        enrollments.add(EnrollmentUtils.mapResultSetToEnrollment(rs));
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+    return enrollments;
+  }
+
+  public List<Enrollment> getEnrollmentsByStatus(EnrollmentStatus status) {
+    List<Enrollment> enrollments = new ArrayList<>();
+    try {
+      PreparedStatement ps = conn.prepareStatement("SELECT * FROM enrollments WHERE status = ? ORDER BY created_at DESC");
+      ps.setString(1, status.name());
+      
+      ResultSet rs = ps.executeQuery();
+      while (rs.next()) {
+        enrollments.add(EnrollmentUtils.mapResultSetToEnrollment(rs));
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+    return enrollments;
+  }
+
+  public boolean createEnrollment(Enrollment enrollment) {
+    try {
+      PreparedStatement ps = conn.prepareStatement(
+          "INSERT INTO enrollments (student_id, school_year, semester, status, max_units, total_units, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+      );
+      ps.setString(1, enrollment.getStudentId());
+      ps.setString(2, enrollment.getSchoolYear());
+      ps.setInt(3, enrollment.getSemester());
+      ps.setString(4, enrollment.getStatus().name());
+      ps.setFloat(5, enrollment.getMaxUnits());
+      ps.setFloat(6, enrollment.getTotalUnits());
+      ps.setTimestamp(7, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
+      
+      return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+
+  public boolean updateEnrollment(Enrollment enrollment) {
+    try {
+      PreparedStatement ps = conn.prepareStatement(
+          "UPDATE enrollments SET student_id = ?, school_year = ?, semester = ?, status = ?, max_units = ?, total_units = ?, submitted_at = ? WHERE id = ?"
+      );
+      ps.setString(1, enrollment.getStudentId());
+      ps.setString(2, enrollment.getSchoolYear());
+      ps.setInt(3, enrollment.getSemester());
+      ps.setString(4, enrollment.getStatus().name());
+      ps.setFloat(5, enrollment.getMaxUnits());
+      ps.setFloat(6, enrollment.getTotalUnits());
+      ps.setTimestamp(7, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
+      ps.setLong(8, enrollment.getId());
+      
+      return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+
+  public boolean updateEnrollmentStatus(Long id, EnrollmentStatus status) {
+    try {
+      PreparedStatement ps = conn.prepareStatement(
+          "UPDATE enrollments SET status = ? WHERE id = ?"
+      );
+      ps.setString(1, status.name());
+      ps.setLong(2, id);
+      
+      return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+
+  public boolean deleteEnrollment(Long id) {
+    try {
+      PreparedStatement ps = conn.prepareStatement("DELETE FROM enrollments WHERE id = ?");
+      ps.setLong(1, id);
+      
+      return ps.executeUpdate() > 0;
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+}
