@@ -10,6 +10,7 @@ A comprehensive Python script to seed a university enrollment system database wi
 - Support for different user roles (Student, Faculty, Registrar)
 - Realistic scheduling and enrollment data
 - Philippine-localized data generation
+- **Multi-database support: MySQL and Derby/Java DB**
 
 ## Database Schema Coverage
 
@@ -33,11 +34,15 @@ The seeder generates data for all tables:
 ## Installation
 
 1. Install the required dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Make sure you have a MySQL database server running with the database schema already created.
+2. Make sure you have a database server running with the database schema already created:
+
+- **MySQL**: MySQL 5.7+ or MySQL 8.0+
+- **Derby**: Java DB/Derby server running on port 1527 (default)
 
 ## Usage
 
@@ -49,6 +54,14 @@ python database_seeder.py
 
 This will connect to `localhost` database `university_db` as `root` user and seed all tables with realistic data.
 
+### Derby/Java DB Usage
+
+```bash
+python database_seeder.py --db-type derby
+```
+
+This will connect to Derby database using the default configuration (localhost:1527, user=app, password=app).
+
 ### Custom Database Connection
 
 ```bash
@@ -57,20 +70,30 @@ python database_seeder.py --host your-host --database your-db --user your-user -
 
 ### Options
 
+- `--db-type`: Database type ('mysql' or 'derby', default: 'mysql')
 - `--host`: Database host (default: localhost)
 - `--database`: Database name (default: university_db)
-- `--user`: Database user (default: root)
-- `--password`: Database password (default: empty)
+- `--user`: Database user (default: root for mysql, app for derby)
+- `--password`: Database password (default: empty for mysql, app for derby)
 - `--no-clear`: Skip clearing existing data before seeding
 
 ### Example Commands
 
 ```bash
-# Seed with custom credentials
+# MySQL with custom credentials
 python database_seeder.py --host 192.168.1.100 --database enrollment_system --user admin --password secret123
+
+# Derby with default configuration
+python database_seeder.py --db-type derby
+
+# Derby with custom configuration
+python database_seeder.py --db-type derby --host localhost --database my_derby_db --user my_user --password my_pass
 
 # Add data without clearing existing data
 python database_seeder.py --no-clear
+
+# Derby without clearing existing data
+python database_seeder.py --db-type derby --no-clear
 ```
 
 ## Generated Data Statistics
@@ -100,9 +123,19 @@ The seeder generates approximately:
 
 ## Database Requirements
 
+The seeder supports multiple database types:
+
+### MySQL
 - MySQL 5.7+ or MySQL 8.0+
 - Database schema must already be created (using the provided SQL file)
 - User must have INSERT, DELETE, and SELECT privileges on the database
+
+### Derby/Java DB
+- Derby database server running (network server mode)
+- Default port: 1527
+- Database will be created if it doesn't exist (create=true in connection string)
+- Java 8+ required for JDBC driver
+- Additional Python dependencies: JPype1, JayDeBeApi
 
 ## Error Handling
 
@@ -131,9 +164,17 @@ self.seed_subjects(count=150)
 ## Troubleshooting
 
 ### Connection Issues
+
+**MySQL:**
 - Verify MySQL server is running
 - Check database credentials and permissions
 - Ensure database exists and schema is created
+
+**Derby:**
+- Ensure Derby network server is running on port 1527
+- Verify Java is installed and accessible
+- Check that Derby client JAR is in classpath
+- Ensure firewall allows connections to port 1527
 
 ### Foreign Key Errors
 - Ensure database schema is properly created with all constraints
@@ -142,6 +183,11 @@ self.seed_subjects(count=150)
 ### Memory Issues
 - For very large datasets, consider batching inserts
 - Monitor system memory usage during generation
+
+### Derby-Specific Issues
+- JVM startup failures: Check Java installation
+- Classpath issues: Ensure Derby JARs are accessible
+- Connection timeouts: Verify Derby server is running
 
 ## License
 

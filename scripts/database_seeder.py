@@ -14,8 +14,9 @@ import sys
 import bcrypt
 from tqdm import tqdm
 from config import *
+import jaydebeapi
+import jpype
 
-# Initialize Faker with Philippine locale
 fake = Faker('en_PH')
 
 class UniversityDatabaseSeeder:
@@ -25,11 +26,12 @@ class UniversityDatabaseSeeder:
     courses, students, faculty, subjects, enrollments, and more.
     
     Attributes:
+        db_type (str): Database type ('mysql' or 'derby')
         host (str): Database host address
         database (str): Database name
         user (str): Database username
         password (str): Database password
-        connection: MySQL database connection object
+        connection: Database connection object (MySQL or Derby)
         departments (list): Storage for generated department records
         courses (list): Storage for generated course records
         rooms (list): Storage for generated room records
@@ -41,14 +43,19 @@ class UniversityDatabaseSeeder:
         curriculums (list): Storage for generated curriculum records
         enrollment_periods (list): Storage for generated enrollment period records
     """
-    def __init__(self, host=None, database=None, user=None, password=None):
-        # Use config defaults if not provided
-        self.host = host or DATABASE_CONFIG['host']
-        self.database = database or DATABASE_CONFIG['database']
-        self.user = user or DATABASE_CONFIG['user']
-        self.password = password or DATABASE_CONFIG['password']
+    def __init__(self, db_type='mysql', host=None, database=None, user=None, password=None):
+        self.db_type = db_type.lower()
+        if self.db_type == 'derby':
+            self.host = host or DERBY_CONFIG['host']
+            self.database = database or DERBY_CONFIG['database']
+            self.user = user or DERBY_CONFIG['user']
+            self.password = password or DERBY_CONFIG['password']
+        else:
+            self.host = host or DATABASE_CONFIG['host']
+            self.database = database or DATABASE_CONFIG['database']
+            self.user = user or DATABASE_CONFIG['user']
+            self.password = password or DATABASE_CONFIG['password']
         self.connection = None
-        # Storage for generated IDs to maintain referential integrity
         self.departments = []
         self.courses = []
         self.rooms = []
@@ -67,17 +74,44 @@ class UniversityDatabaseSeeder:
             bool: True if connection successful, False otherwise
         """
         try:
-            self.connection = mysql.connector.connect(
-                host=self.host,
-                database=self.database,
-                user=self.user,
-                password=self.password
-            )
-            if self.connection.is_connected():
-                print(f"Connected to MySQL database '{self.database}'")
-                return True
-        except Error as e:
-            print(f"Error connecting to MySQL: {e}")
+            if self.db_type == 'mysql':
+                self.connection = mysql.connector.connect(
+                    host=self.host,
+                    database=self.database,
+                    user=self.user,
+                    password=self.password
+                )
+                if self.connection.is_connected():
+                    print(f"Connected to MySQL database '{self.database}'")
+                    return True
+            elif self.db_type == 'derby':
+                derby_jar_path = "derbyclient-10.17.1.0.jar"
+                derby_shared_jar_path = "derbyshared-10.17.1.0.jar"
+                
+                if not jpype.isJVMStarted():
+                    jpype.startJVM(classpath=[derby_jar_path, derby_shared_jar_path])
+                
+                connection_string = f"jdbc:derby://localhost:1527/{self.database};create=true"
+                driver_class = 'org.apache.derby.client.ClientAutoloadedDriver'
+                
+                try:
+                    credentials = [self.user] if not self.password else [self.user, self.password]
+                    self.connection = jaydebeapi.connect(
+                        driver_class,
+                        connection_string,
+                        credentials
+                    )
+                    print(f"Connected to Derby database '{self.database}' using network server")
+                    return True
+                except Exception as network_error:
+                    print(f"Network server connection failed: {network_error}")
+                    raise network_error
+            else:
+                print(f"Unsupported database type: {self.db_type}")
+                return False
+                
+        except Exception as e:
+            print(f"Error connecting to {self.db_type.upper()}: {e}")
             return False
     
     def disconnect(self):
@@ -85,9 +119,89 @@ class UniversityDatabaseSeeder:
         
         Cleans up the database connection and prints confirmation message.
         """
-        if self.connection and self.connection.is_connected():
-            self.connection.close()
-            print("MySQL connection closed")
+        if self.connection:
+            try:
+                if self.db_type == 'mysql' and self.connection.is_connected():
+                    self.connection.close()
+                    print("MySQL connection closed")
+                elif self.db_type == 'derby':
+                    self.connection.close()
+                    print("Derby connection closed")
+            except Exception as e:
+                print(f"Error closing connection: {e}")
+    
+    def _get_table_prefix(self):
+        """Get table prefix based on database type."""
+        return 'APP.' if self.db_type == 'derby' else ''
+    
+    def _get_param_placeholder(self):
+        """Get parameter placeholder based on database type."""
+        return '?' if self.db_type == 'derby' else '%s'
+    
+    def _format_datetime(self, dt):
+        """Format datetime for database compatibility."""
+        return dt.strftime('%Y-%m-%d') if self.db_type == 'derby' else dt
+    
+    def _format_timestamp(self, ts):
+        """Format timestamp for database compatibility."""
+        return ts.strftime('%Y-%m-%d %H:%M:%S') if self.db_type == 'derby' else ts
+    
+    def _create_table_if_not_exists(self, table_name, create_sql):
+        """Create table if it doesn't exist, handling database-specific syntax."""
+        if self.db_type != 'derby':
+            return
+        
+        cursor = self.connection.cursor()
+        try:
+            prefixed_name = f"{self._get_table_prefix()}{table_name}"
+            cursor.execute(create_sql.replace('TABLE_NAME', prefixed_name))
+            print(f"Created {table_name} table")
+        except Exception as e:
+            print(f"{table_name.title()} table creation error (may already exist): {e}")
+        finally:
+            cursor.close()
+    
+    def _execute_insert(self, table_name, columns, values, return_id=True):
+        """Execute insert query with database-specific parameter handling."""
+        cursor = self.connection.cursor()
+        try:
+            table_prefix = self._get_table_prefix()
+            param_placeholder = self._get_param_placeholder()
+            
+            column_list = ', '.join(columns)
+            param_list = ', '.join([param_placeholder] * len(values))
+            
+            query = f"INSERT INTO {table_prefix}{table_name} ({column_list}) VALUES ({param_list})"
+            cursor.execute(query, values)
+            
+            if return_id:
+                return self.get_last_insert_id(cursor, table_name)
+            return None
+        finally:
+            cursor.close()
+    
+    def get_last_insert_id(self, cursor, table_name):
+        """Get the last inserted ID based on database type and table.
+        
+        Args:
+            cursor: Database cursor object
+            table_name: Name of the table to query
+            
+        Returns:
+            int: The last inserted ID
+        """
+        if self.db_type == 'mysql':
+            return cursor.lastrowid
+        else:  # Derby
+            try:
+                cursor.execute(f"SELECT MAX(id) FROM {table_name}")
+                result = cursor.fetchone()
+                if result and result[0] is not None:
+                    return result[0]
+                else:
+                    return 1
+            except:
+                return 1
     
     def clear_tables(self):
         """Clear all tables in correct order to respect foreign key constraints.
@@ -98,10 +212,9 @@ class UniversityDatabaseSeeder:
         print("Clearing existing data...")
         cursor = self.connection.cursor()
         
-        # Order matters due to foreign key constraints
         tables_to_clear = [
             'student_enrolled_subjects',
-            'enrollments_details',
+            'enrollments_details', 
             'enrollments',
             'schedules',
             'prerequisites',
@@ -119,9 +232,19 @@ class UniversityDatabaseSeeder:
         
         for table in tables_to_clear:
             try:
-                cursor.execute(f"DELETE FROM {table}")
-                print(f"Cleared table: {table}")
-            except Error as e:
+                if self.db_type == 'derby':
+                    try:
+                        cursor.execute(f"DROP TABLE APP.{table}")
+                        print(f"Dropped table: {table}")
+                    except Exception as drop_error:
+                        if "does not exist" in str(drop_error):
+                            print(f"Table {table} does not exist, skipping")
+                        else:
+                            print(f"Error dropping {table}: {drop_error}")
+                else:
+                    cursor.execute(f"DELETE FROM {table}")
+                    print(f"Cleared table: {table}")
+            except Exception as e:
                 print(f"Error clearing {table}: {e}")
         
         self.connection.commit()
@@ -139,22 +262,34 @@ class UniversityDatabaseSeeder:
         """
         count = count or SEEDING_COUNTS['departments']
         print(f"Seeding {count} departments...")
+        
+        # Create table for Derby
+        departments_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                department_name VARCHAR(255) NOT NULL,
+                description CLOB
+            )
+        """
+        self._create_table_if_not_exists('departments', departments_sql)
+        
         cursor = self.connection.cursor()
+        try:
+            for name, description in tqdm(DEPARTMENT_DATA[:count], desc="Creating departments", unit="dept"):
+                last_id = self._execute_insert('departments', 
+                                            ['department_name', 'description'], 
+                                            [name, description])
+                
+                self.departments.append({
+                    'id': last_id,
+                    'name': name,
+                    'description': description
+                })
+            
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        for i, (name, description) in enumerate(tqdm(DEPARTMENT_DATA[:count], desc="Creating departments", unit="dept")):
-            query = """
-            INSERT INTO departments (department_name, description)
-            VALUES (%s, %s)
-            """
-            cursor.execute(query, (name, description))
-            self.departments.append({
-                'id': cursor.lastrowid,
-                'name': name,
-                'description': description
-            })
-        
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.departments)} departments")
     
     def seed_courses(self, count=None):
@@ -169,23 +304,37 @@ class UniversityDatabaseSeeder:
         """
         count = count or SEEDING_COUNTS['courses']
         print(f"Seeding {count} courses...")
+        
+        # Create table for Derby
+        courses_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                course_name VARCHAR(255) NOT NULL,
+                description CLOB,
+                department_id INTEGER,
+                FOREIGN KEY (department_id) REFERENCES TABLE_NAME(id)
+            )
+        """
+        self._create_table_if_not_exists('courses', courses_sql)
+        
         cursor = self.connection.cursor()
+        try:
+            for name, description, dept_id in tqdm(COURSE_DATA[:count], desc="Creating courses", unit="course"):
+                if dept_id < len(self.departments):
+                    last_id = self._execute_insert('courses',
+                                                ['course_name', 'description', 'department_id'],
+                                                [name, description, self.departments[dept_id]['id']])
+                    
+                    self.courses.append({
+                        'id': last_id,
+                        'name': name,
+                        'department_id': self.departments[dept_id]['id']
+                    })
+            
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        for i, (name, description, dept_id) in enumerate(tqdm(COURSE_DATA[:count], desc="Creating courses", unit="course")):
-            if dept_id < len(self.departments):
-                query = """
-                INSERT INTO courses (course_name, description, department_id)
-                VALUES (%s, %s, %s)
-                """
-                cursor.execute(query, (name, description, self.departments[dept_id]['id']))
-                self.courses.append({
-                    'id': cursor.lastrowid,
-                    'name': name,
-                    'department_id': self.departments[dept_id]['id']
-                })
-        
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.courses)} courses")
     
     def seed_rooms(self, count=None):
@@ -200,31 +349,39 @@ class UniversityDatabaseSeeder:
         """
         count = count or SEEDING_COUNTS['rooms']
         print(f"Seeding {count} rooms...")
+        
+        # Create table for Derby
+        rooms_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                room VARCHAR(50) NOT NULL,
+                capacity INTEGER
+            )
+        """
+        self._create_table_if_not_exists('rooms', rooms_sql)
+        
         cursor = self.connection.cursor()
-        
-        for i in tqdm(range(count), desc="Creating rooms", unit="room"):
-            room_type, base_capacity = random.choice(ROOM_TYPES)
-            building = random.choice(BUILDING_NAMES)
-            floor = random.randint(1, 5)
-            room_number = f"{building[0]}{floor:02d}{i+1:03d}"
+        try:
+            for i in tqdm(range(count), desc="Creating rooms", unit="room"):
+                room_type, base_capacity = random.choice(ROOM_TYPES)
+                building = random.choice(BUILDING_NAMES)
+                floor = random.randint(*BUILDING_FLOORS)
+                room_number = f"{building[0]}{floor:02d}{i+1:03d}"
+                
+                capacity = max(MIN_ROOM_CAPACITY, base_capacity + random.randint(*CAPACITY_VARIATION))
+                
+                last_id = self._execute_insert('rooms', ['room', 'capacity'], [room_number, capacity])
+                
+                self.rooms.append({
+                    'id': last_id,
+                    'room': room_number,
+                    'capacity': capacity
+                })
             
-            # Add some variation to capacity
-            capacity = base_capacity + random.randint(-10, 20)
-            capacity = max(15, capacity)  # Minimum capacity
-            
-            query = """
-            INSERT INTO rooms (room, capacity)
-            VALUES (%s, %s)
-            """
-            cursor.execute(query, (room_number, capacity))
-            self.rooms.append({
-                'id': cursor.lastrowid,
-                'room': room_number,
-                'capacity': capacity
-            })
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.rooms)} rooms")
     
     def seed_users(self, student_count=None, faculty_count=None, registrar_count=None):
@@ -246,67 +403,44 @@ class UniversityDatabaseSeeder:
         registrar_count = registrar_count or SEEDING_COUNTS['registrars']
         
         print(f"Seeding {student_count} students, {faculty_count} faculty, and {registrar_count} registrars...")
+        
+        # Create table for Derby
+        users_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL
+            )
+        """
+        self._create_table_if_not_exists('users', users_sql)
+        
         cursor = self.connection.cursor()
-        
-        # Create student users
-        for i in tqdm(range(student_count), desc="Creating student users", unit="user"):
-            email = fake.unique.email()
-            # Simple password hash simulation
-            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
-            role = USER_ROLES['STUDENT']
+        try:
+            # Helper function to create users
+            def create_users(count, role, user_type, desc):
+                for _ in tqdm(range(count), desc=f"Creating {desc} users", unit="user"):
+                    email = fake.unique.email()
+                    password = bcrypt.hashpw(DEFAULT_PASSWORD.encode('utf-8'), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode('utf-8')
+                    
+                    last_id = self._execute_insert('users', ['email', 'password', 'role'], [email, password, role])
+                    
+                    self.users.append({
+                        'id': last_id,
+                        'email': email,
+                        'role': role,
+                        'type': user_type
+                    })
             
-            query = """
-            INSERT INTO users (email, password, role)
-            VALUES (%s, %s, %s)
-            """
-            cursor.execute(query, (email, password, role))
-            self.users.append({
-                'id': cursor.lastrowid,
-                'email': email,
-                'role': role,
-                'type': 'student'
-            })
-        
-        # Create faculty users
-        for i in tqdm(range(faculty_count), desc="Creating faculty users", unit="user"):
-            email = fake.unique.email()
-            # Simple password hash simulation
-            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
-            role = USER_ROLES['FACULTY']
+            # Create different user types
+            create_users(student_count, USER_ROLES['STUDENT'], 'student', 'student')
+            create_users(faculty_count, USER_ROLES['FACULTY'], 'faculty', 'faculty')
+            create_users(registrar_count, USER_ROLES['REGISTRAR'], 'registrar', 'registrar')
             
-            query = """
-            INSERT INTO users (email, password, role)
-            VALUES (%s, %s, %s)
-            """
-            cursor.execute(query, (email, password, role))
-            self.users.append({
-                'id': cursor.lastrowid,
-                'email': email,
-                'role': role,
-                'type': 'faculty'
-            })
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        # Create registrar users
-        for i in tqdm(range(registrar_count), desc="Creating registrar users", unit="user"):
-            email = fake.unique.email()
-            # Simple password hash simulation
-            password = bcrypt.hashpw("12345678".encode('utf-8'), bcrypt.gensalt(rounds=4)).decode('utf-8')
-            role = USER_ROLES['REGISTRAR']
-            
-            query = """
-            INSERT INTO users (email, password, role)
-            VALUES (%s, %s, %s)
-            """
-            cursor.execute(query, (email, password, role))
-            self.users.append({
-                'id': cursor.lastrowid,
-                'email': email,
-                'role': role,
-                'type': 'registrar'
-            })
-        
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.users)} users")
     
     def seed_students(self):
@@ -322,53 +456,72 @@ class UniversityDatabaseSeeder:
         Uses STUDENT_DEMOGRAPHICS and STUDENT_STATUS_CONFIG for realistic data.
         """
         print("Seeding students...")
+        
+        # Create table for Derby
+        students_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                student_id VARCHAR(50) NOT NULL UNIQUE,
+                user_id INTEGER NOT NULL,
+                first_name VARCHAR(255) NOT NULL,
+                last_name VARCHAR(255) NOT NULL,
+                middle_name VARCHAR(255),
+                birthdate DATE,
+                student_status VARCHAR(50),
+                course_id INTEGER,
+                year_level INTEGER,
+                FOREIGN KEY (user_id) REFERENCES TABLE_NAME(id),
+                FOREIGN KEY (course_id) REFERENCES TABLE_NAME(id)
+            )
+        """
+        self._create_table_if_not_exists('students', students_sql)
+        
         cursor = self.connection.cursor()
+        try:
+            student_users = [u for u in self.users if u['type'] == 'student']
+            
+            for user in tqdm(student_users, desc="Creating student records", unit="student"):
+                year = random.randint(*STUDENT_DEMOGRAPHICS['year_range'])
+                student_number = f"{year}-{random.randint(*STUDENT_DEMOGRAPHICS['student_number_range'])}"
+                while student_number in [s['student_id'] for s in self.students]:
+                    student_number = f"{year}-{random.randint(10000, 99999)}"
+                
+                first_name = fake.first_name()
+                last_name = fake.last_name()
+                middle_name = fake.first_name() if random.random() > STUDENT_DEMOGRAPHICS['middle_name_probability'] else None
+                
+                age = random.randint(*STUDENT_AGE_RANGE)
+                birthdate = datetime.now() - timedelta(days=age*365)
+                birthdate_str = self._format_datetime(birthdate)
+                
+                student_status = (STUDENT_STATUS_CONFIG['irregular_status'] 
+                                if random.random() < STUDENT_STATUS_CONFIG['irregular_probability']
+                                else STUDENT_STATUS_CONFIG['regular_status'])
+                
+                course = random.choice(self.courses)
+                year_level = min(random.randint(*STUDENT_YEAR_LEVEL_RANGE), 
+                                BACHELOR_MAX_YEAR if course['name'].startswith('Bachelor') else 5)
+                
+                columns = ['student_id', 'user_id', 'first_name', 'last_name', 'middle_name',
+                          'birthdate', 'student_status', 'course_id', 'year_level']
+                values = [student_number, user['id'], first_name, last_name, middle_name,
+                         birthdate_str, student_status, course['id'], year_level]
+                
+                last_id = self._execute_insert('students', columns, values)
+                
+                self.students.append({
+                    'student_id': student_number,
+                    'user_id': user['id'],
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'course_id': course['id'],
+                    'year_level': year_level
+                })
+            
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        student_users = [u for u in self.users if u['type'] == 'student']
-        
-        for user in tqdm(student_users, desc="Creating student records", unit="student"):
-            # Generate student ID
-            year = random.randint(*STUDENT_DEMOGRAPHICS['year_range'])
-            student_number = f"{year}-{random.randint(*STUDENT_DEMOGRAPHICS['student_number_range'])}"
-            # Check if student number already exists
-            while student_number in [s['student_id'] for s in self.students]:
-                student_number = f"{year}-{random.randint(10000, 99999)}"
-            
-            first_name = fake.first_name()
-            last_name = fake.last_name()
-            middle_name = fake.first_name() if random.random() > STUDENT_DEMOGRAPHICS['middle_name_probability'] else None
-            
-            # Generate realistic birthdate
-            age = random.randint(*STUDENT_DEMOGRAPHICS['age_range'])
-            birthdate = datetime.now() - timedelta(days=age*365)
-            
-            # Make IRREGULAR students uncommon
-            if random.random() < STUDENT_STATUS_CONFIG['irregular_probability']:
-                student_status = STUDENT_STATUS_CONFIG['irregular_status']
-            else:
-                student_status = STUDENT_STATUS_CONFIG['regular_status']
-            course = random.choice(self.courses)
-            year_level = min(random.randint(1, 5), 4 if course['name'].startswith('Bachelor') else 5)
-            
-            query = """
-            INSERT INTO students (student_id, user_id, first_name, last_name, middle_name, 
-                                 birthdate, student_status, course_id, year_level)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (student_number, user['id'], first_name, last_name, 
-                                 middle_name, birthdate, student_status, course['id'], year_level))
-            
-            self.students.append({
-                'student_id': student_number,
-                'user_id': user['id'],
-                'first_name': first_name,
-                'last_name': last_name,
-                'course_id': course['id'],
-                'year_level': year_level
-            })
-        
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.students)} students")
     
     def seed_faculty(self):
@@ -378,31 +531,46 @@ class UniversityDatabaseSeeder:
         realistic names and department assignments.
         """
         print("Seeding faculty...")
+        
+        # Create table for Derby
+        faculty_sql = """
+            CREATE TABLE TABLE_NAME (
+                id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                first_name VARCHAR(255) NOT NULL,
+                last_name VARCHAR(255) NOT NULL,
+                department_id INTEGER,
+                FOREIGN KEY (user_id) REFERENCES TABLE_NAME(id),
+                FOREIGN KEY (department_id) REFERENCES TABLE_NAME(id)
+            )
+        """
+        self._create_table_if_not_exists('faculty', faculty_sql)
+        
         cursor = self.connection.cursor()
-        
-        faculty_users = [u for u in self.users if u['type'] == 'faculty']
-        
-        for user in tqdm(faculty_users, desc="Creating faculty records", unit="faculty"):
-            first_name = fake.first_name()
-            last_name = fake.last_name()
-            department = random.choice(self.departments)
+        try:
+            faculty_users = [u for u in self.users if u['type'] == 'faculty']
             
-            query = """
-            INSERT INTO faculty (user_id, first_name, last_name, department_id)
-            VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(query, (user['id'], first_name, last_name, department['id']))
+            for user in tqdm(faculty_users, desc="Creating faculty records", unit="faculty"):
+                first_name = fake.first_name()
+                last_name = fake.last_name()
+                department = random.choice(self.departments)
+                
+                last_id = self._execute_insert('faculty',
+                                            ['user_id', 'first_name', 'last_name', 'department_id'],
+                                            [user['id'], first_name, last_name, department['id']])
+                
+                self.faculty.append({
+                    'id': last_id,
+                    'user_id': user['id'],
+                    'first_name': first_name,
+                    'last_name': last_name,
+                    'department_id': department['id']
+                })
             
-            self.faculty.append({
-                'id': cursor.lastrowid,
-                'user_id': user['id'],
-                'first_name': first_name,
-                'last_name': last_name,
-                'department_id': department['id']
-            })
+            self.connection.commit()
+        finally:
+            cursor.close()
         
-        self.connection.commit()
-        cursor.close()
         print(f"Created {len(self.faculty)} faculty members")
     
     def seed_curriculum(self):
@@ -414,20 +582,44 @@ class UniversityDatabaseSeeder:
         print("Seeding curriculum...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.curriculum (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        semester VARCHAR(255),
+                        cur_year DATE,
+                        course INTEGER,
+                        FOREIGN KEY (course) REFERENCES APP.courses(id)
+                    )
+                """)
+                print("Created curriculum table")
+            except Exception as e:
+                print(f"Curriculum table creation error (may already exist): {e}")
+        
         for course in self.courses:
-            # Create curriculum for each semester (1-8)
             for year in range(1, 5):
                 for semester in [1, 2]:
                     curriculum_year = datetime.now() - timedelta(days=random.randint(365, 1825))
+                    curriculum_year_str = curriculum_year.strftime('%Y-%m-%d') if self.db_type == 'derby' else curriculum_year
                     
-                    query = """
-                    INSERT INTO curriculum (semester, cur_year, course)
-                    VALUES (%s, %s, %s)
-                    """
-                    cursor.execute(query, (f"Semester {semester}", curriculum_year, course['id']))
+                    if self.db_type == 'derby':
+                        query = """
+                        INSERT INTO APP.curriculum (semester, cur_year, course)
+                        VALUES (?, ?, ?)
+                        """
+                        cursor.execute(query, (f"Semester {semester}", curriculum_year_str, course['id']))
+                    else:
+                        query = """
+                        INSERT INTO curriculum (semester, cur_year, course)
+                        VALUES (%s, %s, %s)
+                        """
+                        cursor.execute(query, (f"Semester {semester}", curriculum_year, course['id']))
+                    
+                    last_id = self.get_last_insert_id(cursor, 'curriculum')
                     
                     self.curriculums.append({
-                        'id': cursor.lastrowid,
+                        'id': last_id,
                         'semester': f"Semester {semester}",
                         'course_id': course['id']
                     })
@@ -451,6 +643,25 @@ class UniversityDatabaseSeeder:
         print(f"Seeding {count} subjects...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.subjects (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        subject_name VARCHAR(255) NOT NULL,
+                        subject_code VARCHAR(50) NOT NULL,
+                        units INTEGER,
+                        description CLOB,
+                        curriculum_id INTEGER,
+                        department_id INTEGER,
+                        FOREIGN KEY (curriculum_id) REFERENCES APP.curriculum(id),
+                        FOREIGN KEY (department_id) REFERENCES APP.departments(id)
+                    )
+                """)
+                print("Created subjects table")
+            except Exception as e:
+                print(f"Subjects table creation error (may already exist): {e}")
+        
         for i in tqdm(range(count), desc="Creating subjects", unit="subject"):
             template = random.choice(SUBJECT_TEMPLATES)
             subject_name = f"{template[0]} {random.randint(1, 4)}"
@@ -461,15 +672,25 @@ class UniversityDatabaseSeeder:
             curriculum = random.choice(self.curriculums) if self.curriculums else None
             department = random.choice(self.departments)
             
-            query = """
-            INSERT INTO subjects (subject_name, subject_code, units, description, curriculum_id, department_id)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(query, (subject_name, subject_code, units, description, 
-                                 curriculum['id'] if curriculum else None, department['id']))
+            if self.db_type == 'derby':
+                query = """
+                INSERT INTO APP.subjects (subject_name, subject_code, units, description, curriculum_id, department_id)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """
+                cursor.execute(query, (subject_name, subject_code, units, description, 
+                                     curriculum['id'] if curriculum else None, department['id']))
+            else:
+                query = """
+                INSERT INTO subjects (subject_name, subject_code, units, description, curriculum_id, department_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(query, (subject_name, subject_code, units, description, 
+                                     curriculum['id'] if curriculum else None, department['id']))
+            
+            last_id = self.get_last_insert_id(cursor, 'subjects')
             
             self.subjects.append({
-                'id': cursor.lastrowid,
+                'id': last_id,
                 'name': subject_name,
                 'code': subject_code,
                 'units': units,
@@ -490,22 +711,47 @@ class UniversityDatabaseSeeder:
         print("Seeding sections...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.sections (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        section_name VARCHAR(255) NOT NULL,
+                        section_code VARCHAR(50) NOT NULL,
+                        subject_id INTEGER,
+                        capacity INTEGER,
+                        FOREIGN KEY (subject_id) REFERENCES APP.subjects(id)
+                    )
+                """)
+                print("Created sections table")
+            except Exception as e:
+                print(f"Sections table creation error (may already exist): {e}")
+        
         for subject in tqdm(self.subjects, desc="Creating sections", unit="subject"):
             num_sections = random.randint(2, 4)
             
             for i in range(num_sections):
-                section_name = f"{subject['code']}-{chr(65 + i)}"  # A, B, C, D
+                section_name = f"{subject['code']}-{chr(65 + i)}"
                 section_code = f"SEC{subject['id']}-{i+1}"
                 capacity = random.randint(25, 50)
                 
-                query = """
-                INSERT INTO sections (section_name, section_code, subject_id, capacity)
-                VALUES (%s, %s, %s, %s)
-                """
-                cursor.execute(query, (section_name, section_code, subject['id'], capacity))
+                if self.db_type == 'derby':
+                    query = """
+                    INSERT INTO APP.sections (section_name, section_code, subject_id, capacity)
+                    VALUES (?, ?, ?, ?)
+                    """
+                    cursor.execute(query, (section_name, section_code, subject['id'], capacity))
+                else:
+                    query = """
+                    INSERT INTO sections (section_name, section_code, subject_id, capacity)
+                    VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(query, (section_name, section_code, subject['id'], capacity))
+                
+                last_id = self.get_last_insert_id(cursor, 'sections')
                 
                 self.sections.append({
-                    'id': cursor.lastrowid,
+                    'id': last_id,
                     'name': section_name,
                     'code': section_code,
                     'subject_id': subject['id'],
@@ -526,8 +772,23 @@ class UniversityDatabaseSeeder:
         print("Seeding prerequisites...")
         cursor = self.connection.cursor()
         
-        for i, subject in enumerate(self.subjects[:50]):  # Limit to first 50 subjects
-            if random.random() > 0.7:  # 30% chance of having prerequisites
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.prerequisites (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        pre_subject_id INTEGER,
+                        subject_id INTEGER,
+                        FOREIGN KEY (pre_subject_id) REFERENCES APP.subjects(id),
+                        FOREIGN KEY (subject_id) REFERENCES APP.subjects(id)
+                    )
+                """)
+                print("Created prerequisites table")
+            except Exception as e:
+                print(f"Prerequisites table creation error (may already exist): {e}")
+        
+        for i, subject in enumerate(self.subjects[:50]):
+            if random.random() > 0.7:
                 num_prereqs = random.randint(1, 2)
                 available_prereqs = [s for s in self.subjects if s['id'] != subject['id']]
                 
@@ -536,11 +797,18 @@ class UniversityDatabaseSeeder:
                         prereq = random.choice(available_prereqs)
                         available_prereqs.remove(prereq)
                         
-                        query = """
-                        INSERT INTO prerequisites (pre_subject_id, subject_id)
-                        VALUES (%s, %s)
-                        """
-                        cursor.execute(query, (prereq['id'], subject['id']))
+                        if self.db_type == 'derby':
+                            query = """
+                            INSERT INTO APP.prerequisites (pre_subject_id, subject_id)
+                            VALUES (?, ?)
+                            """
+                            cursor.execute(query, (prereq['id'], subject['id']))
+                        else:
+                            query = """
+                            INSERT INTO prerequisites (pre_subject_id, subject_id)
+                            VALUES (%s, %s)
+                            """
+                            cursor.execute(query, (prereq['id'], subject['id']))
         
         self.connection.commit()
         cursor.close()
@@ -560,25 +828,51 @@ class UniversityDatabaseSeeder:
         print(f"Seeding {count} enrollment periods...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.enrollment_period (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        school_year VARCHAR(50),
+                        semester INTEGER,
+                        start_date DATE,
+                        end_date DATE
+                    )
+                """)
+                print("Created enrollment_period table")
+            except Exception as e:
+                print(f"Enrollment_period table creation error (may already exist): {e}")
+        
         for i in range(count):
             year = 2021 + i
             for semester in [1, 2]:
-                # Generate realistic enrollment period dates
                 if semester == 1:
-                    start_date = datetime(year - 1, 10, 1)  # October previous year
-                    end_date = datetime(year - 1, 11, 30)   # November previous year
+                    start_date = datetime(year - 1, 10, 1)
+                    end_date = datetime(year - 1, 11, 30)
                 else:
-                    start_date = datetime(year, 3, 1)  # March
-                    end_date = datetime(year, 4, 30)   # April
+                    start_date = datetime(year, 3, 1)
+                    end_date = datetime(year, 4, 30)
                 
-                query = """
-                INSERT INTO enrollment_period (school_year, semester, start_date, end_date)
-                VALUES (%s, %s, %s, %s)
-                """
-                cursor.execute(query, (f"{year-1}-{year}", semester, start_date, end_date))
+                start_date_str = start_date.strftime('%Y-%m-%d') if self.db_type == 'derby' else start_date
+                end_date_str = end_date.strftime('%Y-%m-%d') if self.db_type == 'derby' else end_date
+                
+                if self.db_type == 'derby':
+                    query = """
+                    INSERT INTO APP.enrollment_period (school_year, semester, start_date, end_date)
+                    VALUES (?, ?, ?, ?)
+                    """
+                    cursor.execute(query, (f"{year-1}-{year}", semester, start_date_str, end_date_str))
+                else:
+                    query = """
+                    INSERT INTO enrollment_period (school_year, semester, start_date, end_date)
+                    VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(query, (f"{year-1}-{year}", semester, start_date, end_date))
+                
+                last_id = self.get_last_insert_id(cursor, 'enrollment_period')
                 
                 self.enrollment_periods.append({
-                    'id': cursor.lastrowid,
+                    'id': last_id,
                     'school_year': f"{year-1}-{year}",
                     'semester': semester,
                     'start_date': start_date,
@@ -601,14 +895,32 @@ class UniversityDatabaseSeeder:
         print("Seeding schedules...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.schedules (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        section_id INTEGER,
+                        room_id INTEGER,
+                        faculty_id INTEGER,
+                        day VARCHAR(10),
+                        start_time VARCHAR(10),
+                        end_time VARCHAR(10),
+                        FOREIGN KEY (section_id) REFERENCES APP.sections(id),
+                        FOREIGN KEY (room_id) REFERENCES APP.rooms(id),
+                        FOREIGN KEY (faculty_id) REFERENCES APP.faculty(id)
+                    )
+                """)
+                print("Created schedules table")
+            except Exception as e:
+                print(f"Schedules table creation error (may already exist): {e}")
+        
         for section in self.sections:
-            # Create 1-2 schedules per section
             num_schedules = random.randint(1, 2)
             
             for _ in range(num_schedules):
                 day = random.choice(DAYS_OF_WEEK)
                 
-                # Generate realistic time slots
                 start_hour = random.choice([7, 8, 9, 10, 13, 14, 15, 16])
                 start_minute = random.choice([0, 30])
                 end_hour = start_hour + random.choice([1, 2, 3])
@@ -620,11 +932,18 @@ class UniversityDatabaseSeeder:
                 room = random.choice(self.rooms)
                 faculty = random.choice(self.faculty)
                 
-                query = """
-                INSERT INTO schedules (section_id, room_id, faculty_id, day, start_time, end_time)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """
-                cursor.execute(query, (section['id'], room['id'], faculty['id'], day, start_time, end_time))
+                if self.db_type == 'derby':
+                    query = """
+                    INSERT INTO APP.schedules (section_id, room_id, faculty_id, day, start_time, end_time)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(query, (section['id'], room['id'], faculty['id'], day, start_time, end_time))
+                else:
+                    query = """
+                    INSERT INTO schedules (section_id, room_id, faculty_id, day, start_time, end_time)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(query, (section['id'], room['id'], faculty['id'], day, start_time, end_time))
         
         self.connection.commit()
         cursor.close()
@@ -644,10 +963,58 @@ class UniversityDatabaseSeeder:
         print("Seeding enrollments...")
         cursor = self.connection.cursor()
         
+        if self.db_type == 'derby':
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.enrollments (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        student_id VARCHAR(50),
+                        school_year VARCHAR(50),
+                        semester INTEGER,
+                        status VARCHAR(50),
+                        max_units DECIMAL(5,2),
+                        total_units DECIMAL(5,2),
+                        submitted_at TIMESTAMP
+                    )
+                """)
+                print("Created enrollments table")
+            except Exception as e:
+                print(f"Enrollments table creation error (may already exist): {e}")
+            
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.enrollments_details (
+                        id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                        enrollment_id INTEGER,
+                        section_id INTEGER,
+                        subject_id INTEGER,
+                        units DECIMAL(3,1),
+                        status VARCHAR(50),
+                        FOREIGN KEY (enrollment_id) REFERENCES APP.enrollments(id),
+                        FOREIGN KEY (section_id) REFERENCES APP.sections(id),
+                        FOREIGN KEY (subject_id) REFERENCES APP.subjects(id)
+                    )
+                """)
+                print("Created enrollments_details table")
+            except Exception as e:
+                print(f"Enrollments_details table creation error (may already exist): {e}")
+            
+            try:
+                cursor.execute(f"""
+                    CREATE TABLE APP.student_enrolled_subjects (
+                        student_id VARCHAR(50),
+                        subject_id INTEGER,
+                        PRIMARY KEY (student_id, subject_id),
+                        FOREIGN KEY (subject_id) REFERENCES APP.subjects(id)
+                    )
+                """)
+                print("Created student_enrolled_subjects table")
+            except Exception as e:
+                print(f"Student_enrolled_subjects table creation error (may already exist): {e}")
+        
         statuses = ENROLLMENT_STATUSES
         
         for student in self.students:
-            # Create 1-4 enrollments per student
             num_enrollments = random.randint(1, 4)
             
             for _ in range(num_enrollments):
@@ -659,17 +1026,28 @@ class UniversityDatabaseSeeder:
                 total_units = random.uniform(12, max_units)
                 
                 submitted_at = fake.date_time_between(start_date='-2y', end_date='now')
+                submitted_at_str = submitted_at.strftime('%Y-%m-%d %H:%M:%S') if self.db_type == 'derby' else submitted_at
                 
-                query = """
-                INSERT INTO enrollments (student_id, school_year, semester, status, max_units, total_units, submitted_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """
-                cursor.execute(query, (student['student_id'], school_year, semester, status, 
-                                     max_units, total_units, submitted_at))
+                if self.db_type == 'derby':
+                    query = """
+                    INSERT INTO APP.enrollments (student_id, school_year, semester, status, max_units, total_units, submitted_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """
+                    cursor.execute(query, (student['student_id'], school_year, semester, status, 
+                                         max_units, total_units, submitted_at_str))
+                else:
+                    query = """
+                    INSERT INTO enrollments (student_id, school_year, semester, status, max_units, total_units, submitted_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
+                    cursor.execute(query, (student['student_id'], school_year, semester, status, 
+                                         max_units, total_units, submitted_at))
                 
-                enrollment_id = cursor.lastrowid
+                if self.db_type == 'mysql':
+                    enrollment_id = cursor.lastrowid
+                else:
+                    enrollment_id = self.get_last_insert_id(cursor, 'enrollments')
                 
-                # Add enrollment details
                 if status in ['APPROVED', 'ENROLLED']:
                     num_subjects = random.randint(3, 7)
                     available_sections = random.sample(self.sections, min(num_subjects, len(self.sections)))
@@ -678,14 +1056,31 @@ class UniversityDatabaseSeeder:
                         detail_status = random.choice(ENROLLMENT_DETAIL_STATUSES)
                         units = next((s['units'] for s in self.subjects if s['id'] == section['subject_id']), 3)
                         
-                        query = """
-                        INSERT INTO enrollments_details (enrollment_id, section_id, subject_id, units, status)
-                        VALUES (%s, %s, %s, %s, %s)
-                        """
-                        cursor.execute(query, (enrollment_id, section['id'], section['subject_id'], units, detail_status))
+                        if self.db_type == 'derby':
+                            query = """
+                            INSERT INTO APP.enrollments_details (enrollment_id, section_id, subject_id, units, status)
+                            VALUES (?, ?, ?, ?, ?)
+                            """
+                            cursor.execute(query, (enrollment_id, section['id'], section['subject_id'], units, detail_status))
+                        else:
+                            query = """
+                            INSERT INTO enrollments_details (enrollment_id, section_id, subject_id, units, status)
+                            VALUES (%s, %s, %s, %s, %s)
+                            """
+                            cursor.execute(query, (enrollment_id, section['id'], section['subject_id'], units, detail_status))
                         
-                        # Add to student_enrolled_subjects if enrolled
-                        if status == 'ENROLLED' and detail_status == 'SELECTED':
+                        if self.db_type == 'derby':
+                            cursor.execute("""
+                                SELECT COUNT(*) FROM APP.student_enrolled_subjects 
+                                WHERE student_id = ? AND subject_id = ?
+                            """, (student['student_id'], section['subject_id']))
+                            if cursor.fetchone()[0] == 0:
+                                query = """
+                                INSERT INTO APP.student_enrolled_subjects (student_id, subject_id)
+                                VALUES (?, ?)
+                                """
+                                cursor.execute(query, (student['student_id'], section['subject_id']))
+                        else:
                             query = """
                             INSERT IGNORE INTO student_enrolled_subjects (student_id, subject_id)
                             VALUES (%s, %s)
@@ -716,7 +1111,6 @@ class UniversityDatabaseSeeder:
             if clear_existing:
                 self.clear_tables()
             
-            # Seed in order respecting foreign key constraints
             self.seed_departments()
             self.seed_courses()
             self.seed_rooms()
@@ -760,6 +1154,7 @@ def main():
     initializes the seeder, and runs the seeding process.
     
     Command line arguments:
+        --db-type: Database type ('mysql' or 'derby', default: 'mysql')
         --host: Database host (default from config)
         --database: Database name (default from config)
         --user: Database user (default from config)
@@ -767,6 +1162,8 @@ def main():
         --no-clear: Skip clearing existing data
     """
     parser = argparse.ArgumentParser(description='University Database Seeder')
+    parser.add_argument('--db-type', default='mysql', choices=['mysql', 'derby'], 
+                       help='Database type (mysql or derby)')
     parser.add_argument('--host', default=DATABASE_CONFIG['host'], help='Database host')
     parser.add_argument('--database', default=DATABASE_CONFIG['database'], help='Database name')
     parser.add_argument('--user', default=DATABASE_CONFIG['user'], help='Database user')
@@ -776,6 +1173,7 @@ def main():
     args = parser.parse_args()
     
     seeder = UniversityDatabaseSeeder(
+        db_type=args.db_type,
         host=args.host,
         database=args.database,
         user=args.user,

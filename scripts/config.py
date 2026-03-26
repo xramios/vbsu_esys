@@ -12,6 +12,16 @@ DATABASE_CONFIG = {
     'password': ''
 }
 
+# Derby Database Configuration
+DERBY_CONFIG = {
+    'host': 'localhost',
+    'database': 'sample',
+    'user': 'APP',
+    'password': 'derby',
+    'port': 1527,
+    'driver': 'org.apache.derby.client.ClientAutoloadedDriver'
+}
+
 # Department Data
 DEPARTMENT_DATA = [
     ('College of Engineering', 'Offers various engineering programs including Civil, Electrical, Mechanical, and Computer Engineering'),
@@ -119,8 +129,8 @@ SEEDING_COUNTS = {
     'departments': 8,
     'courses': 15,
     'rooms': 100,
-    'students': 2000,
-    'faculty': 69,
+    'students': 4391,
+    'faculty': 50,
     'registrars': 5,
     'subjects': 100,
     'enrollment_periods': 4
@@ -129,9 +139,9 @@ SEEDING_COUNTS = {
 # Student Demographics
 STUDENT_DEMOGRAPHICS = {
     'age_range': (18, 25),
-    'year_range': (2020, 2024),
+    'year_range': (2019, 2026),
     'student_number_range': (10000, 99999),
-    'middle_name_probability': 0.3  # 30% chance of having middle name
+    'middle_name_probability': 0.90
 }
 
 # Gender Distribution for Realistic Patterns (course_keyword, female_probability)
@@ -180,3 +190,26 @@ PLOT_COLORS = {
     'male': '#4169e1',
     'year_levels': ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57']
 }
+
+# Constants
+DEFAULT_PASSWORD = "12345678"
+BCRYPT_ROUNDS = 4
+MIN_ROOM_CAPACITY = 40
+CAPACITY_VARIATION = (-10, 20)
+BUILDING_FLOORS = (1, 5)
+STUDENT_AGE_RANGE = (17, 25)
+STUDENT_YEAR_LEVEL_RANGE = (1, 5)
+BACHELOR_MAX_YEAR = 5
+SECTIONS_PER_SUBJECT = (3, 6)
+SECTION_CAPACITY_RANGE = (25, 50)
+PREREQUISITE_PROBABILITY = 0.7
+PREREQUISITES_PER_SUBJECT = (1, 2)
+SUBJECTS_WITH_PREREQUISITES = 50
+SCHEDULES_PER_SECTION = (2, 4)
+ENROLLMENTS_PER_STUDENT = (2, 6)
+SUBJECTS_PER_ENROLLMENT = (4, 8)
+UNITS_RANGE = (16, 24)
+MIN_UNITS = 16
+START_HOURS = [7, 8, 9, 10, 13, 14, 15, 16]
+START_MINUTES = [0, 30]
+DURATION_HOURS = [1, 2, 3]
