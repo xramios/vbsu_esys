@@ -14,8 +14,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AuthService {
 
@@ -91,7 +89,7 @@ public class AuthService {
     ResultSet rs,
     LoginData loginData
   ) throws SQLException {
-    logger.info("Fetching faculty information for user: {}", rs.getLong("id"));
+    logger.info("Fetching faculty information for user: " + rs.getLong("id"));
     Optional<Faculty> faculty = facultyService.getFacultyByUserId(
       rs.getLong("id")
     );

@@ -51,7 +51,7 @@ public class StudentDashboard extends javax.swing.JFrame {
     this.setUndecorated(true);
     initComponents();
     this.setLocationRelativeTo(null);
-    this.windowBar1.setTitle("Welcome " + fullName);
+    this.windowBar1.setTitle(fullName);
   }
 
   /**
@@ -120,7 +120,7 @@ public class StudentDashboard extends javax.swing.JFrame {
     jLabel16 = new javax.swing.JLabel();
     jLabel17 = new javax.swing.JLabel();
     jSeparator2 = new javax.swing.JSeparator();
-    jButton3 = new javax.swing.JButton();
+    btnSubmitSchedule = new javax.swing.JButton();
     panelMySchedule = new javax.swing.JPanel();
     jPanel9 = new javax.swing.JPanel();
     jPanel10 = new javax.swing.JPanel();
@@ -759,7 +759,6 @@ public class StudentDashboard extends javax.swing.JFrame {
                     )
                 )
             )
-            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
             .addGroup(
               panelAcademicOverviewLayout
                 .createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -1082,6 +1081,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 
     btnSearchSubject.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
     btnSearchSubject.setText("Search");
+    btnSearchSubject.addActionListener(this::btnSearchSubjectActionPerformed);
 
     jPanel8.setBackground(new java.awt.Color(255, 255, 255));
     jPanel8.setBorder(new com.group5.paul_esys.ui.RoundShadowBorder());
@@ -1098,8 +1098,9 @@ public class StudentDashboard extends javax.swing.JFrame {
     jLabel17.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
     jLabel17.setText("0 / n units");
 
-    jButton3.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
-    jButton3.setText("Submit Schedule");
+    btnSubmitSchedule.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
+    btnSubmitSchedule.setText("Submit Schedule");
+    btnSubmitSchedule.addActionListener(this::btnSubmitScheduleActionPerformed);
 
     javax.swing.GroupLayout jPanel8Layout = new javax.swing.GroupLayout(
       jPanel8
@@ -1171,7 +1172,7 @@ public class StudentDashboard extends javax.swing.JFrame {
                             .createSequentialGroup()
                             .addGap(71, 71, 71)
                             .addComponent(
-                              jButton3,
+                              btnSubmitSchedule,
                               javax.swing.GroupLayout.PREFERRED_SIZE,
                               219,
                               javax.swing.GroupLayout.PREFERRED_SIZE
@@ -1223,7 +1224,7 @@ public class StudentDashboard extends javax.swing.JFrame {
             )
             .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
             .addComponent(
-              jButton3,
+              btnSubmitSchedule,
               javax.swing.GroupLayout.PREFERRED_SIZE,
               45,
               javax.swing.GroupLayout.PREFERRED_SIZE
@@ -1550,6 +1551,18 @@ public class StudentDashboard extends javax.swing.JFrame {
     // TODO add your handling code here:
   } //GEN-LAST:event_txtSearchActionPerformed
 
+  private void btnSearchSubjectActionPerformed(java.awt.event.ActionEvent evt) {
+    //GEN-FIRST:event_btnSearchSubjectActionPerformed
+    // TODO add your handling code here:
+  } //GEN-LAST:event_btnSearchSubjectActionPerformed
+
+  private void btnSubmitScheduleActionPerformed(
+    java.awt.event.ActionEvent evt
+  ) {
+    //GEN-FIRST:event_btnSubmitScheduleActionPerformed
+    // TODO add your handling code here:
+  } //GEN-LAST:event_btnSubmitScheduleActionPerformed
+
   /**
    * @param args the command line arguments
    */
@@ -1563,7 +1576,7 @@ public class StudentDashboard extends javax.swing.JFrame {
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JButton btnOpenRegistration;
   private javax.swing.JButton btnSearchSubject;
-  private javax.swing.JButton jButton3;
+  private javax.swing.JButton btnSubmitSchedule;
   private javax.swing.JButton jButton4;
   private javax.swing.JButton jButton5;
   private javax.swing.JLabel jLabel1;
