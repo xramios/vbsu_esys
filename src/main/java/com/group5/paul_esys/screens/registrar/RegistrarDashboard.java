@@ -1,6 +1,7 @@
 package com.group5.paul_esys.screens.registrar;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.group5.paul_esys.modules.users.services.UserSession;
 import com.group5.paul_esys.screens.registrar.enroll_user.StudentEnrollmentForm;
 
 /*
@@ -22,6 +23,7 @@ public class RegistrarDashboard extends javax.swing.JFrame {
 		this.setUndecorated(true);
 		initComponents();
 		this.setLocationRelativeTo(null);
+        windowBar1.setTitle("Welcome, " + UserSession.getInstance().getUserInformation().getEmail());
 	}
 
 	/**
