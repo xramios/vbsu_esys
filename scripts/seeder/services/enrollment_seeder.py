@@ -22,7 +22,7 @@ from seeder.config.constants import (
     ENROLLMENTS_PER_STUDENT,
 )
 from seeder.utils.faker_instance import fake
-from seeder.models.data_models import EnrollmentPeriod, Schedule
+from seeder.models.data_models import EnrollmentPeriod, Room, Schedule, Section
 
 if TYPE_CHECKING:
     from seeder.core.database import DatabaseManager
@@ -51,8 +51,10 @@ class EnrollmentSeeder(BaseSeeder):
             room_id INTEGER,
             faculty_id INTEGER,
             day VARCHAR(10),
-            start_time VARCHAR(10),
-            end_time VARCHAR(10),
+            start_time TIME,
+            end_time TIME,
+            school_year VARCHAR(9),
+            semester INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (section_id) REFERENCES APP.sections(id),
@@ -189,6 +191,7 @@ class EnrollmentSeeder(BaseSeeder):
         try:
             for section in self.state.sections:
                 num_schedules = random.randint(1, 2)
+                room = self._select_room_for_section(section)
 
                 for _ in range(num_schedules):
                     day = random.choice(DAYS_OF_WEEK)
@@ -198,31 +201,29 @@ class EnrollmentSeeder(BaseSeeder):
                     end_hour = start_hour + random.choice(DURATION_HOURS)
                     end_minute = start_minute
 
-                    start_time = f"{start_hour:02d}:{start_minute:02d}"
-                    end_time = f"{end_hour:02d}:{end_minute:02d}"
-
-                    room = random.choice(self.state.rooms)
+                    start_time = f"{start_hour:02d}:{start_minute:02d}:00"
+                    end_time = f"{end_hour:02d}:{end_minute:02d}:00"
                     faculty = random.choice(self.state.faculty)
 
                     if self.db_manager.db_type == "derby":
                         query = """
                             INSERT INTO APP.schedules
-                            (section_id, room_id, faculty_id, day, start_time, end_time)
-                            VALUES (?, ?, ?, ?, ?, ?)
+                            (section_id, room_id, faculty_id, day, start_time, end_time, school_year, semester)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """
                         cursor.execute(
                             query,
-                            (section.id, room.id, faculty.id, day, start_time, end_time),
+                            (section.id, room.id, faculty.id, day, start_time, end_time, "2023-2024", 1),
                         )
                     else:
                         query = """
                             INSERT INTO schedules
-                            (section_id, room_id, faculty_id, day, start_time, end_time)
-                            VALUES (%s, %s, %s, %s, %s, %s)
+                            (section_id, room_id, faculty_id, day, start_time, end_time, school_year, semester)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """
                         cursor.execute(
                             query,
-                            (section.id, room.id, faculty.id, day, start_time, end_time),
+                            (section.id, room.id, faculty.id, day, start_time, end_time, "2023-2024", 1),
                         )
 
             self.db_manager.commit()
@@ -230,6 +231,24 @@ class EnrollmentSeeder(BaseSeeder):
             cursor.close()
 
         print("Created schedules")
+
+    def _select_room_for_section(self, section: Section) -> Room:
+        """Select a room that can fit the section capacity.
+
+        Args:
+            section: Section being scheduled
+
+        Returns:
+            A room with enough capacity, or the largest room available as a fallback.
+        """
+        if not self.state.rooms:
+            raise ValueError("Cannot seed schedules without any rooms")
+
+        eligible_rooms = [room for room in self.state.rooms if room.capacity >= section.capacity]
+        if eligible_rooms:
+            return random.choice(eligible_rooms)
+
+        return max(self.state.rooms, key=lambda room: room.capacity)
 
     def seed_enrollments(self) -> None:
         """Seed enrollments and enrollment details tables."""
@@ -247,6 +266,7 @@ class EnrollmentSeeder(BaseSeeder):
         cursor = self.db_manager.connection.cursor()
         try:
             statuses = ENROLLMENT_STATUSES
+            section_occupancy = {section.id: 0 for section in self.state.sections}
 
             for student in self.state.students:
                 num_enrollments = random.randint(*ENROLLMENTS_PER_STUDENT)
@@ -305,7 +325,13 @@ class EnrollmentSeeder(BaseSeeder):
                         enrollment_id = self.adapter.get_last_insert_id(cursor, "enrollments")
 
                     if status in ["APPROVED", "ENROLLED"]:
-                        self._create_enrollment_details(cursor, enrollment_id, student.student_id, semester)
+                        self._create_enrollment_details(
+                            cursor,
+                            enrollment_id,
+                            student.student_id,
+                            semester,
+                            section_occupancy,
+                        )
 
             self.db_manager.commit()
         finally:
@@ -323,7 +349,12 @@ class EnrollmentSeeder(BaseSeeder):
         self.seed_enrollments()
 
     def _create_enrollment_details(
-        self, cursor: any, enrollment_id: int, student_id: str, semester: int = 1
+        self,
+        cursor: any,
+        enrollment_id: int,
+        student_id: str,
+        semester: int = 1,
+        section_occupancy: dict[int, int] | None = None,
     ) -> None:
         """Create enrollment details for an enrollment.
 
@@ -332,19 +363,38 @@ class EnrollmentSeeder(BaseSeeder):
             enrollment_id: Enrollment ID
             student_id: Student ID
             semester: Semester number (1 or 2) for finding correct semester_subject
+            section_occupancy: Running count of selected seats per section
         """
+        if section_occupancy is None:
+            section_occupancy = {}
+
         num_subjects = random.randint(3, 7)
-        available_sections = random.sample(
-            self.state.sections, min(num_subjects, len(self.state.sections))
-        )
+        used_section_ids: set[int] = set()
 
         # Get student's course_id for finding correct semester_subjects
         student = next((s for s in self.state.students if s.student_id == student_id), None)
         student_course_id = student.course_id if student else None
         student_year_level = student.year_level if student else 1
 
-        for section in available_sections:
+        for _ in range(min(num_subjects, len(self.state.sections))):
             detail_status = random.choice(ENROLLMENT_DETAIL_STATUSES)
+            section = self._select_section_for_detail(
+                used_section_ids,
+                section_occupancy,
+                require_capacity=detail_status == "SELECTED",
+            )
+
+            if section is None and detail_status == "SELECTED":
+                detail_status = "DROPPED"
+                section = self._select_section_for_detail(
+                    used_section_ids,
+                    section_occupancy,
+                    require_capacity=False,
+                )
+
+            if section is None:
+                break
+
             units = next(
                 (s.units for s in self.state.subjects if s.id == section.subject_id), 3
             )
@@ -368,12 +418,49 @@ class EnrollmentSeeder(BaseSeeder):
                     query, (enrollment_id, section.id, section.subject_id, units, detail_status)
                 )
 
+            used_section_ids.add(section.id)
+
+            if detail_status == "SELECTED":
+                section_occupancy[section.id] = section_occupancy.get(section.id, 0) + 1
+
             # Find the correct semester_subject_id for this subject and semester
             semester_subject_id = self._find_semester_subject_id(
                 section.subject_id, semester, student_course_id, student_year_level
             )
             if semester_subject_id:
                 self._insert_student_enrolled_subject(cursor, student_id, semester_subject_id)
+
+    def _select_section_for_detail(
+        self,
+        used_section_ids: set[int],
+        section_occupancy: dict[int, int],
+        require_capacity: bool,
+    ) -> Section | None:
+        """Pick an unused section for an enrollment detail.
+
+        Args:
+            used_section_ids: Section IDs already chosen for the current enrollment
+            section_occupancy: Running selected-seat counts per section
+            require_capacity: Whether the chosen section must still have selected seats left
+
+        Returns:
+            A section that satisfies the current constraints, or None if no section remains.
+        """
+        candidate_sections = [
+            section for section in self.state.sections if section.id not in used_section_ids
+        ]
+
+        if require_capacity:
+            candidate_sections = [
+                section
+                for section in candidate_sections
+                if section_occupancy.get(section.id, 0) < section.capacity
+            ]
+
+        if not candidate_sections:
+            return None
+
+        return random.choice(candidate_sections)
 
     def _find_semester_subject_id(
         self, subject_id: int, semester_num: int, course_id: int = None, year_level: int = None

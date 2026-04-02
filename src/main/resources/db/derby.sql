@@ -36,7 +36,9 @@ CREATE TABLE users
     id       bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email    varchar(255),
     password char(60),
-    role     varchar(20) CHECK (role IN ('STUDENT', 'REGISTRAR', 'FACULTY'))
+    role     varchar(20) CHECK (role IN ('STUDENT', 'REGISTRAR', 'FACULTY')),
+    created_at timestamp default current_timestamp,
+    updated_at timestamp default current_timestamp
 );
 
 /**
@@ -102,7 +104,9 @@ CREATE TABLE curriculum
 (
     id       bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     cur_year date,
-    course   bigint
+    course   bigint,
+    created_at timestamp default current_timestamp,
+    updated_at timestamp default current_timestamp
 );
 
 /**
@@ -161,7 +165,9 @@ CREATE TABLE rooms
 (
     id       bigint      NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     room     varchar(32) NOT NULL,
-    capacity int         NOT NULL
+    capacity int         NOT NULL,
+    created_at timestamp default current_timestamp,
+    updated_at timestamp default current_timestamp
 );
 
 /**

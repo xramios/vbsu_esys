@@ -1,4 +1,4 @@
-package gui;
+package com.group5.paul_esys.screens.shan;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
