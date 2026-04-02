@@ -11,7 +11,7 @@ public class LoginData {
   }
 
   public boolean isValid() {
-    return email != null && password != null && password.length() >= 8;
+    return email != null && password != null;
   }
 
   public String getEmail() {
