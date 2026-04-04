@@ -8,8 +8,7 @@ public class Enrollment {
 
   private Long id;
   private String studentId;
-  private String schoolYear;
-  private Integer semester;
+  private Long enrollmentPeriodId;
   private EnrollmentStatus status;
   private Float maxUnits;
   private Float totalUnits;
@@ -20,11 +19,10 @@ public class Enrollment {
   public Enrollment() {
   }
 
-  public Enrollment(Long id, String studentId, String schoolYear, Integer semester, EnrollmentStatus status, Float maxUnits, Float totalUnits, Date submittedAt, Timestamp updatedAt, Timestamp createdAt) {
+  public Enrollment(Long id, String studentId, Long enrollmentPeriodId, EnrollmentStatus status, Float maxUnits, Float totalUnits, Date submittedAt, Timestamp updatedAt, Timestamp createdAt) {
     this.id = id;
     this.studentId = studentId;
-    this.schoolYear = schoolYear;
-    this.semester = semester;
+    this.enrollmentPeriodId = enrollmentPeriodId;
     this.status = status;
     this.maxUnits = maxUnits;
     this.totalUnits = totalUnits;
@@ -51,21 +49,12 @@ public class Enrollment {
     return this;
   }
 
-  public String getSchoolYear() {
-    return schoolYear;
+  public Long getEnrollmentPeriodId() {
+    return enrollmentPeriodId;
   }
 
-  public Enrollment setSchoolYear(String schoolYear) {
-    this.schoolYear = schoolYear;
-    return this;
-  }
-
-  public Integer getSemester() {
-    return semester;
-  }
-
-  public Enrollment setSemester(Integer semester) {
-    this.semester = semester;
+  public Enrollment setEnrollmentPeriodId(Long enrollmentPeriodId) {
+    this.enrollmentPeriodId = enrollmentPeriodId;
     return this;
   }
 

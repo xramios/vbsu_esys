@@ -12,8 +12,7 @@ public class EnrollmentUtils {
     return new Enrollment(
         rs.getLong("id"),
         rs.getString("student_id"),
-        rs.getString("school_year"),
-        rs.getInt("semester"),
+        rs.getLong("enrollment_period_id"),
         EnrollmentStatus.valueOf(rs.getString("status")),
         rs.getFloat("max_units"),
         rs.getFloat("total_units"),

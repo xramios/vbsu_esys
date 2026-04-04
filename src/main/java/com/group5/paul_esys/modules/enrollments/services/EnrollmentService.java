@@ -95,15 +95,14 @@ public class EnrollmentService {
   public boolean createEnrollment(Enrollment enrollment) {
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO enrollments (student_id, school_year, semester, status, max_units, total_units, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO enrollments (student_id, enrollment_period_id, status, max_units, total_units, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
         )) {
       ps.setString(1, enrollment.getStudentId());
-      ps.setString(2, enrollment.getSchoolYear());
-      ps.setInt(3, enrollment.getSemester());
-      ps.setString(4, enrollment.getStatus().name());
-      ps.setFloat(5, enrollment.getMaxUnits());
-      ps.setFloat(6, enrollment.getTotalUnits());
-      ps.setTimestamp(7, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
+      ps.setLong(2, enrollment.getEnrollmentPeriodId());
+      ps.setString(3, enrollment.getStatus().name());
+      ps.setFloat(4, enrollment.getMaxUnits());
+      ps.setFloat(5, enrollment.getTotalUnits());
+      ps.setTimestamp(6, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
@@ -115,16 +114,15 @@ public class EnrollmentService {
   public boolean updateEnrollment(Enrollment enrollment) {
     try (Connection conn = ConnectionService.getConnection();
       PreparedStatement ps = conn.prepareStatement(
-        "UPDATE enrollments SET student_id = ?, school_year = ?, semester = ?, status = ?, max_units = ?, total_units = ?, submitted_at = ? WHERE id = ?"
+        "UPDATE enrollments SET student_id = ?, enrollment_period_id = ?, status = ?, max_units = ?, total_units = ?, submitted_at = ? WHERE id = ?"
       )) {
       ps.setString(1, enrollment.getStudentId());
-      ps.setString(2, enrollment.getSchoolYear());
-      ps.setInt(3, enrollment.getSemester());
-      ps.setString(4, enrollment.getStatus().name());
-      ps.setFloat(5, enrollment.getMaxUnits());
-      ps.setFloat(6, enrollment.getTotalUnits());
-      ps.setTimestamp(7, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
-      ps.setLong(8, enrollment.getId());
+      ps.setLong(2, enrollment.getEnrollmentPeriodId());
+      ps.setString(3, enrollment.getStatus().name());
+      ps.setFloat(4, enrollment.getMaxUnits());
+      ps.setFloat(5, enrollment.getTotalUnits());
+      ps.setTimestamp(6, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
+      ps.setLong(7, enrollment.getId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
