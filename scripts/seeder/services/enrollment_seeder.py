@@ -53,13 +53,13 @@ class EnrollmentSeeder(BaseSeeder):
             day VARCHAR(10),
             start_time TIME,
             end_time TIME,
-            school_year VARCHAR(9),
-            semester INTEGER,
+            enrollment_period_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (section_id) REFERENCES APP.sections(id),
             FOREIGN KEY (room_id) REFERENCES APP.rooms(id),
-            FOREIGN KEY (faculty_id) REFERENCES APP.faculty(id)
+            FOREIGN KEY (faculty_id) REFERENCES APP.faculty(id),
+            FOREIGN KEY (enrollment_period_id) REFERENCES APP.enrollment_period(id)
         )
     """
 
@@ -67,14 +67,15 @@ class EnrollmentSeeder(BaseSeeder):
         CREATE TABLE APP.enrollments (
             id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             student_id VARCHAR(50),
-            school_year VARCHAR(50),
-            semester INTEGER,
+            enrollment_period_id INTEGER,
             status VARCHAR(50),
             max_units DECIMAL(5,2),
             total_units DECIMAL(5,2),
             submitted_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES APP.students(student_id),
+            FOREIGN KEY (enrollment_period_id) REFERENCES APP.enrollment_period(id)
         )
     """
 
@@ -205,25 +206,27 @@ class EnrollmentSeeder(BaseSeeder):
                     end_time = f"{end_hour:02d}:{end_minute:02d}:00"
                     faculty = random.choice(self.state.faculty)
 
+                    enrollment_period_id = random.choice(self.state.enrollment_periods).id
+
                     if self.db_manager.db_type == "derby":
                         query = """
                             INSERT INTO APP.schedules
-                            (section_id, room_id, faculty_id, day, start_time, end_time, school_year, semester)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            (section_id, room_id, faculty_id, day, start_time, end_time, enrollment_period_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
                         """
                         cursor.execute(
                             query,
-                            (section.id, room.id, faculty.id, day, start_time, end_time, "2023-2024", 1),
+                            (section.id, room.id, faculty.id, day, start_time, end_time, enrollment_period_id),
                         )
                     else:
                         query = """
                             INSERT INTO schedules
-                            (section_id, room_id, faculty_id, day, start_time, end_time, school_year, semester)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            (section_id, room_id, faculty_id, day, start_time, end_time, enrollment_period_id)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
                         """
                         cursor.execute(
                             query,
-                            (section.id, room.id, faculty.id, day, start_time, end_time, "2023-2024", 1),
+                            (section.id, room.id, faculty.id, day, start_time, end_time, enrollment_period_id),
                         )
 
             self.db_manager.commit()
@@ -272,8 +275,8 @@ class EnrollmentSeeder(BaseSeeder):
                 num_enrollments = random.randint(*ENROLLMENTS_PER_STUDENT)
 
                 for _ in range(num_enrollments):
-                    school_year = random.choice([f"{y}-{y+1}" for y in range(2021, 2025)])
-                    semester = random.randint(1, 2)
+                    enrollment_period = random.choice(self.state.enrollment_periods)
+                    semester = enrollment_period.semester
                     status = random.choice(statuses)
 
                     max_units = random.uniform(15, 24)
@@ -285,15 +288,14 @@ class EnrollmentSeeder(BaseSeeder):
                     if self.db_manager.db_type == "derby":
                         query = """
                             INSERT INTO APP.enrollments
-                            (student_id, school_year, semester, status, max_units, total_units, submitted_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                            (student_id, enrollment_period_id, status, max_units, total_units, submitted_at)
+                            VALUES (?, ?, ?, ?, ?, ?)
                         """
                         cursor.execute(
                             query,
                             (
                                 student.student_id,
-                                school_year,
-                                semester,
+                                enrollment_period.id,
                                 status,
                                 max_units,
                                 total_units,
@@ -303,15 +305,14 @@ class EnrollmentSeeder(BaseSeeder):
                     else:
                         query = """
                             INSERT INTO enrollments
-                            (student_id, school_year, semester, status, max_units, total_units, submitted_at)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            (student_id, enrollment_period_id, status, max_units, total_units, submitted_at)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                         """
                         cursor.execute(
                             query,
                             (
                                 student.student_id,
-                                school_year,
-                                semester,
+                                enrollment_period.id,
                                 status,
                                 max_units,
                                 total_units,

@@ -138,6 +138,7 @@ class Schedule:
     day: str
     start_time: str
     end_time: str
+    enrollment_period_id: int
     id: Optional[int] = None
 
 
@@ -146,8 +147,7 @@ class Enrollment:
     """Represents a student enrollment record."""
 
     student_id: str
-    school_year: str
-    semester: int
+    enrollment_period_id: int
     status: str
     max_units: float
     total_units: float
