@@ -212,8 +212,7 @@ CREATE TABLE schedules
     day         varchar(3) CHECK (day IN ('MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN')),
     start_time  time,
     end_time    time,
-    school_year varchar(9),
-    semester    SMALLINT,
+    enrollment_period_id bigint,
     updated_at  timestamp default current_timestamp,
     created_at  timestamp default current_timestamp
 );
@@ -227,8 +226,7 @@ CREATE TABLE enrollments
 (
     id           bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     student_id   varchar(32),
-    school_year  varchar(9),
-    semester     SMALLINT,
+    enrollment_period_id bigint,
     status       varchar(20) CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'ENROLLED', 'CANCELLED')),
     max_units    float,
     total_units  float,
@@ -360,3 +358,10 @@ ALTER TABLE prerequisites
 
 ALTER TABLE prerequisites
     ADD CONSTRAINT fk_prereq_subject FOREIGN KEY (subject_id) REFERENCES subjects (id);
+
+ALTER TABLE schedules
+    ADD CONSTRAINT fk_schedules_enrollment_period FOREIGN KEY (enrollment_period_id) REFERENCES enrollment_period (id);
+
+ALTER TABLE enrollments
+    ADD CONSTRAINT fk_enrollments_enrollment_period FOREIGN KEY (enrollment_period_id) REFERENCES enrollment_period (id);
+
