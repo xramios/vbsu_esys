@@ -13,15 +13,14 @@ public class Schedule {
   private DayOfWeek day;
   private Time startTime;
   private Time endTime;
-  private String schoolYear;
-  private Integer semester;
+  private Long enrollmentPeriodId;
   private Timestamp updatedAt;
   private Timestamp createdAt;
 
   public Schedule() {
   }
 
-  public Schedule(Long id, Long sectionId, Long roomId, Long facultyId, DayOfWeek day, Time startTime, Time endTime, String schoolYear, Integer semester, Timestamp updatedAt, Timestamp createdAt) {
+  public Schedule(Long id, Long sectionId, Long roomId, Long facultyId, DayOfWeek day, Time startTime, Time endTime, Long enrollmentPeriodId, Timestamp updatedAt, Timestamp createdAt) {
     this.id = id;
     this.sectionId = sectionId;
     this.roomId = roomId;
@@ -29,8 +28,7 @@ public class Schedule {
     this.day = day;
     this.startTime = startTime;
     this.endTime = endTime;
-    this.schoolYear = schoolYear;
-    this.semester = semester;
+    this.enrollmentPeriodId = enrollmentPeriodId;
     this.updatedAt = updatedAt;
     this.createdAt = createdAt;
   }
@@ -98,21 +96,12 @@ public class Schedule {
     return this;
   }
 
-  public String getSchoolYear() {
-    return schoolYear;
+  public Long getEnrollmentPeriodId() {
+    return enrollmentPeriodId;
   }
 
-  public Schedule setSchoolYear(String schoolYear) {
-    this.schoolYear = schoolYear;
-    return this;
-  }
-
-  public Integer getSemester() {
-    return semester;
-  }
-
-  public Schedule setSemester(Integer semester) {
-    this.semester = semester;
+  public Schedule setEnrollmentPeriodId(Long enrollmentPeriodId) {
+    this.enrollmentPeriodId = enrollmentPeriodId;
     return this;
   }
 

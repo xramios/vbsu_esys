@@ -129,7 +129,7 @@ public class ScheduleService {
   public boolean createSchedule(Schedule schedule) {
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO schedules (section_id, room_id, faculty_id, day, start_time, end_time, school_year, semester) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO schedules (section_id, room_id, faculty_id, day, start_time, end_time, enrollment_period_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
         )) {
       ps.setLong(1, schedule.getSectionId());
       ps.setLong(2, schedule.getRoomId());
@@ -137,8 +137,7 @@ public class ScheduleService {
       ps.setString(4, schedule.getDay().name());
       ps.setTime(5, schedule.getStartTime());
       ps.setTime(6, schedule.getEndTime());
-      ps.setString(7, schedule.getSchoolYear());
-      ps.setInt(8, schedule.getSemester());
+      ps.setLong(7, schedule.getEnrollmentPeriodId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
@@ -150,7 +149,7 @@ public class ScheduleService {
   public boolean updateSchedule(Schedule schedule) {
     try (Connection conn = ConnectionService.getConnection();
       PreparedStatement ps = conn.prepareStatement(
-        "UPDATE schedules SET section_id = ?, room_id = ?, faculty_id = ?, day = ?, start_time = ?, end_time = ?, school_year = ?, semester = ? WHERE id = ?"
+        "UPDATE schedules SET section_id = ?, room_id = ?, faculty_id = ?, day = ?, start_time = ?, end_time = ?, enrollment_period_id = ? WHERE id = ?"
       )) {
       ps.setLong(1, schedule.getSectionId());
       ps.setLong(2, schedule.getRoomId());
@@ -158,9 +157,8 @@ public class ScheduleService {
       ps.setString(4, schedule.getDay().name());
       ps.setTime(5, schedule.getStartTime());
       ps.setTime(6, schedule.getEndTime());
-      ps.setString(7, schedule.getSchoolYear());
-      ps.setInt(8, schedule.getSemester());
-      ps.setLong(9, schedule.getId());
+      ps.setLong(7, schedule.getEnrollmentPeriodId());
+      ps.setLong(8, schedule.getId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {

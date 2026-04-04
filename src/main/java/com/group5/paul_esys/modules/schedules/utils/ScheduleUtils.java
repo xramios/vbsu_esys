@@ -15,10 +15,9 @@ public class ScheduleUtils {
         rs.getLong("room_id"),
         rs.getLong("faculty_id"),
         DayOfWeek.valueOf(rs.getString("day")),
-        rs.getTime("start_time"),
-        rs.getTime("end_time"),
-        rs.getString("school_year"),
-        rs.getInt("semester"),
+        rs.getString("start_time") != null ? java.sql.Time.valueOf(rs.getString("start_time")) : null,
+        rs.getString("end_time") != null ? java.sql.Time.valueOf(rs.getString("end_time")) : null,
+        rs.getLong("enrollment_period_id"),
         rs.getTimestamp("updated_at"),
         rs.getTimestamp("created_at")
     );
