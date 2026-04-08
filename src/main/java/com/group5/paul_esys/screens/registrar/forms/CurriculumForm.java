@@ -4,6 +4,17 @@
  */
 package com.group5.paul_esys.screens.registrar.forms;
 
+import com.group5.paul_esys.modules.courses.model.Course;
+import com.group5.paul_esys.modules.courses.services.CourseService;
+import com.group5.paul_esys.modules.curriculum.model.Curriculum;
+import com.group5.paul_esys.modules.curriculum.services.CurriculumService;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author nytri
@@ -11,12 +22,137 @@ package com.group5.paul_esys.screens.registrar.forms;
 public class CurriculumForm extends javax.swing.JFrame {
 	
 	private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(CurriculumForm.class.getName());
+        private final CourseService courseService = CourseService.getInstance();
+        private final CurriculumService curriculumService = CurriculumService.getInstance();
+        private final Map<String, Long> courseIdByName = new LinkedHashMap<>();
+        private final Runnable onSavedCallback;
+        private final Curriculum editingCurriculum;
 
 	/**
 	 * Creates new form Curriculum
 	 */
 	public CurriculumForm() {
+                this(null, null);
+        }
+
+        public CurriculumForm(Curriculum editingCurriculum, Runnable onSavedCallback) {
+                this.editingCurriculum = editingCurriculum;
+                this.onSavedCallback = onSavedCallback;
+                this.setUndecorated(true);
 		initComponents();
+                this.setLocationRelativeTo(null);
+                btnSave.addActionListener(this::btnSaveActionPerformed);
+                initializeForm();
+        }
+
+        private void initializeForm() {
+                int currentYear = LocalDate.now().getYear();
+                spinnerYear.setModel(new javax.swing.SpinnerNumberModel(currentYear, 2000, 2100, 1));
+                loadCourses();
+
+                if (editingCurriculum == null) {
+                        return;
+                }
+
+                jLabel3.setText("Update Curriculum");
+                btnSave.setText("Update");
+
+                if (editingCurriculum.getCurYear() != null) {
+                        LocalDate localDate = editingCurriculum
+                                .getCurYear()
+                                .toInstant()
+                                .atZone(ZoneId.systemDefault())
+                                .toLocalDate();
+                        spinnerYear.setValue(localDate.getYear());
+                }
+
+                courseService
+                        .getCourseById(editingCurriculum.getCourse())
+                        .ifPresent(course -> cbxCourse.setSelectedItem(course.getCourseName()));
+        }
+
+        private void loadCourses() {
+                cbxCourse.removeAllItems();
+                courseIdByName.clear();
+
+                for (Course course : courseService.getAllCourses()) {
+                        cbxCourse.addItem(course.getCourseName());
+                        courseIdByName.put(course.getCourseName(), course.getId());
+                }
+        }
+
+        private String buildCurriculumName(String courseName, int year) {
+                String cleaned = courseName.replaceAll("[^A-Za-z0-9 ]", " ").trim();
+                if (cleaned.isEmpty()) {
+                        return "CUR" + year;
+                }
+
+                String[] parts = cleaned.split("\\s+");
+                StringBuilder code = new StringBuilder();
+                for (String part : parts) {
+                        if (!part.isEmpty() && code.length() < 6) {
+                                code.append(Character.toUpperCase(part.charAt(0)));
+                        }
+                }
+
+                if (code.length() < 2) {
+                        String compact = cleaned.replaceAll("\\s+", "").toUpperCase();
+                        code = new StringBuilder(compact.substring(0, Math.min(3, compact.length())));
+                }
+
+                return code + String.valueOf(year);
+        }
+
+        private void saveCurriculum() {
+                Object selectedCourse = cbxCourse.getSelectedItem();
+                if (selectedCourse == null || !courseIdByName.containsKey(selectedCourse.toString())) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Please select a course.",
+                                "Validation Error",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                }
+
+                int selectedYear = (Integer) spinnerYear.getValue();
+                Long selectedCourseId = courseIdByName.get(selectedCourse.toString());
+                Date curriculumYear = java.sql.Date.valueOf(LocalDate.of(selectedYear, 1, 1));
+
+                Curriculum curriculum = editingCurriculum == null ? new Curriculum() : editingCurriculum;
+                curriculum
+                        .setName(buildCurriculumName(selectedCourse.toString(), selectedYear))
+                        .setCurYear(curriculumYear)
+                        .setCourse(selectedCourseId);
+
+                boolean success = editingCurriculum == null
+                        ? curriculumService.createCurriculum(curriculum)
+                        : curriculumService.updateCurriculum(curriculum);
+
+                if (!success) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Failed to save curriculum. Please try again.",
+                                "Save Failed",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        editingCurriculum == null
+                                ? "Curriculum created successfully."
+                                : "Curriculum updated successfully.",
+                        "Success",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+
+                if (onSavedCallback != null) {
+                        onSavedCallback.run();
+                }
+
+                dispose();
 	}
 
 	/**
@@ -115,6 +251,10 @@ public class CurriculumForm extends javax.swing.JFrame {
         private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
 		this.dispose();
         }//GEN-LAST:event_btnCancelActionPerformed
+
+        private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {
+                saveCurriculum();
+        }
 
 	/**
 	 * @param args the command line arguments
