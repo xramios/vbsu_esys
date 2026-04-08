@@ -1,5 +1,13 @@
 package com.group5.paul_esys.screens.registrar.forms;
 
+import com.group5.paul_esys.modules.courses.model.Course;
+import com.group5.paul_esys.modules.courses.services.CourseService;
+import com.group5.paul_esys.modules.departments.model.Department;
+import com.group5.paul_esys.modules.departments.services.DepartmentService;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
+
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
@@ -12,14 +20,125 @@ package com.group5.paul_esys.screens.registrar.forms;
 public class CourseForm extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(CourseForm.class.getName());
+    private final CourseService courseService = CourseService.getInstance();
+    private final DepartmentService departmentService = DepartmentService.getInstance();
+    private final Map<String, Long> departmentIdByName = new LinkedHashMap<>();
+    private final Runnable onSavedCallback;
+    private final Course editingCourse;
 
     /**
      * Creates new form CourseForm
      */
     public CourseForm() {
+        this(null, null);
+    }
+
+    public CourseForm(Course editingCourse, Runnable onSavedCallback) {
+        this.editingCourse = editingCourse;
+        this.onSavedCallback = onSavedCallback;
         this.setUndecorated(true);
         initComponents();
         this.setLocationRelativeTo(null);
+        initializeForm();
+    }
+
+    private void initializeForm() {
+        loadDepartments();
+
+        if (editingCourse != null) {
+            jLabel1.setText("Update Course");
+            jLabel5.setText("Update existing course");
+            btnSave.setText("Update");
+
+            txtCourse.setText(editingCourse.getCourseName());
+            txtAreaDescription.setText(
+                editingCourse.getDescription() == null ? "" : editingCourse.getDescription()
+            );
+
+            departmentService
+                .getDepartmentById(editingCourse.getDepartmentId())
+                .ifPresent(department -> cbxDep.setSelectedItem(department.getDepartmentName()));
+        }
+    }
+
+    private void loadDepartments() {
+        cbxDep.removeAllItems();
+        departmentIdByName.clear();
+
+        for (Department department : departmentService.getAllDepartments()) {
+            cbxDep.addItem(department.getDepartmentName());
+            departmentIdByName.put(department.getDepartmentName(), department.getId());
+        }
+    }
+
+    private boolean isValidForm() {
+        if (txtCourse.getText() == null || txtCourse.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Course name is required.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        Object selectedDepartment = cbxDep.getSelectedItem();
+        if (selectedDepartment == null || !departmentIdByName.containsKey(selectedDepartment.toString())) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Department is required.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private void saveCourse() {
+        if (!isValidForm()) {
+            return;
+        }
+
+        String selectedDepartment = cbxDep.getSelectedItem().toString();
+        Long departmentId = departmentIdByName.get(selectedDepartment);
+
+        Course course = editingCourse == null ? new Course() : editingCourse;
+        course
+            .setCourseName(txtCourse.getText().trim())
+            .setDescription(txtAreaDescription.getText().trim())
+            .setDepartmentId(departmentId);
+
+        boolean success =
+            editingCourse == null
+                ? courseService.createCourse(course)
+                : courseService.updateCourse(course);
+
+        if (!success) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Failed to save course. Please try again.",
+                "Save Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        JOptionPane.showMessageDialog(
+            this,
+            editingCourse == null
+                ? "Course created successfully."
+                : "Course updated successfully.",
+            "Success",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+
+        if (onSavedCallback != null) {
+            onSavedCallback.run();
+        }
+
+        dispose();
     }
 
     /**
@@ -113,15 +232,17 @@ public class CourseForm extends javax.swing.JFrame {
         }// </editor-fold>//GEN-END:initComponents
 
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
-        // TODO add your handling code here:
+        dispose();
     }//GEN-LAST:event_btnCancelActionPerformed
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        // TODO add your handling code here:
+        saveCourse();
     }//GEN-LAST:event_btnSaveActionPerformed
 
         private void txtAreaDescriptionKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtAreaDescriptionKeyReleased
-                // TODO add your handling code here:
+            if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                saveCourse();
+            }
         }//GEN-LAST:event_txtAreaDescriptionKeyReleased
 
     /**
