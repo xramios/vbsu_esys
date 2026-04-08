@@ -1,5 +1,9 @@
 package com.group5.paul_esys.screens.registrar.forms;
 
+import com.group5.paul_esys.modules.rooms.model.Room;
+import com.group5.paul_esys.modules.rooms.services.RoomService;
+import javax.swing.JOptionPane;
+
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
@@ -12,14 +16,102 @@ package com.group5.paul_esys.screens.registrar.forms;
 public class RoomForm extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(RoomForm.class.getName());
+    private final RoomService roomService = RoomService.getInstance();
+    private final Runnable onSavedCallback;
+    private final Room editingRoom;
 
     /**
      * Creates new form RoomForm
      */
     public RoomForm() {
+        this(null, null);
+    }
+
+    public RoomForm(Room editingRoom, Runnable onSavedCallback) {
+        this.editingRoom = editingRoom;
+        this.onSavedCallback = onSavedCallback;
         this.setUndecorated(true);
         initComponents();
         this.setLocationRelativeTo(null);
+        initializeForm();
+    }
+
+    private void initializeForm() {
+        if (editingRoom == null) {
+            return;
+        }
+
+        jLabel3.setText("Update Room");
+        jLabel4.setText("Update existing room");
+        btnSave.setText("Update");
+
+        txtRoom.setText(editingRoom.getRoom());
+        spinnerCapacity.setValue(editingRoom.getCapacity());
+    }
+
+    private boolean isValidForm() {
+        if (txtRoom.getText() == null || txtRoom.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Room name is required.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        int capacity = (Integer) spinnerCapacity.getValue();
+        if (capacity <= 0) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Capacity must be greater than 0.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private void saveRoom() {
+        if (!isValidForm()) {
+            return;
+        }
+
+        Room room = editingRoom == null ? new Room() : editingRoom;
+        room
+            .setRoom(txtRoom.getText().trim())
+            .setCapacity((Integer) spinnerCapacity.getValue());
+
+        boolean success = editingRoom == null
+            ? roomService.createRoom(room)
+            : roomService.updateRoom(room);
+
+        if (!success) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Failed to save room. Please try again.",
+                "Save Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        JOptionPane.showMessageDialog(
+            this,
+            editingRoom == null
+                ? "Room created successfully."
+                : "Room updated successfully.",
+            "Success",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+
+        if (onSavedCallback != null) {
+            onSavedCallback.run();
+        }
+
+        dispose();
     }
 
     /**
@@ -101,19 +193,21 @@ public class RoomForm extends javax.swing.JFrame {
         }// </editor-fold>//GEN-END:initComponents
 
     private void txtRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtRoomActionPerformed
-        // TODO add your handling code here:
+        // no-op
     }//GEN-LAST:event_txtRoomActionPerformed
 
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
-        // TODO add your handling code here:
+        dispose();
     }//GEN-LAST:event_btnCancelActionPerformed
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        // TODO add your handling code here:
+        saveRoom();
     }//GEN-LAST:event_btnSaveActionPerformed
 
         private void spinnerCapacityKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_spinnerCapacityKeyReleased
-                // TODO add your handling code here:
+            if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                saveRoom();
+            }
         }//GEN-LAST:event_spinnerCapacityKeyReleased
 
     /**
