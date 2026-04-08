@@ -26,17 +26,28 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
         // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
         private void initComponents() {
 
+                jPopupMenu1 = new javax.swing.JPopupMenu();
+                menuItemUpdateSubject = new javax.swing.JMenuItem();
+                menuItemDeleteSubject = new javax.swing.JMenuItem();
                 jPanel1 = new javax.swing.JPanel();
                 jLabel3 = new javax.swing.JLabel();
                 txtSearch = new javax.swing.JTextField();
                 jScrollPane1 = new javax.swing.JScrollPane();
-                jTable1 = new javax.swing.JTable();
-                jButton1 = new javax.swing.JButton();
+                tableSubjects = new javax.swing.JTable();
+                btnCreateSubject = new javax.swing.JButton();
                 jLabel4 = new javax.swing.JLabel();
-                jComboBox1 = new javax.swing.JComboBox<>();
-                jButton2 = new javax.swing.JButton();
+                cbxDepartment = new javax.swing.JComboBox<>();
+                btnClearFilter = new javax.swing.JButton();
                 jLabel1 = new javax.swing.JLabel();
                 jLabel2 = new javax.swing.JLabel();
+
+                menuItemUpdateSubject.setText("jMenuItem1");
+                menuItemUpdateSubject.addActionListener(this::menuItemUpdateSubjectActionPerformed);
+                jPopupMenu1.add(menuItemUpdateSubject);
+
+                menuItemDeleteSubject.setText("jMenuItem2");
+                menuItemDeleteSubject.addActionListener(this::menuItemDeleteSubjectActionPerformed);
+                jPopupMenu1.add(menuItemDeleteSubject);
 
                 setBackground(new java.awt.Color(255, 255, 255));
                 setPreferredSize(new java.awt.Dimension(1181, 684));
@@ -50,7 +61,7 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                 txtSearch.setToolTipText("Search by code, title, description");
                 txtSearch.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
 
-                jTable1.setModel(new javax.swing.table.DefaultTableModel(
+                tableSubjects.setModel(new javax.swing.table.DefaultTableModel(
                         new Object [][] {
                                 {null, null, null, null, null, null},
                                 {null, null, null, null, null, null},
@@ -61,17 +72,19 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                                 "Name", "Code", "Units", "Description", "Curriculum", "Department"
                         }
                 ));
-                jScrollPane1.setViewportView(jTable1);
+                jScrollPane1.setViewportView(tableSubjects);
 
-                jButton1.setBackground(new java.awt.Color(255, 234, 234));
-                jButton1.setText("Create Subject");
+                btnCreateSubject.setBackground(new java.awt.Color(255, 234, 234));
+                btnCreateSubject.setText("Create Subject");
+                btnCreateSubject.addActionListener(this::btnCreateSubjectActionPerformed);
 
                 jLabel4.setText("Department:");
 
-                jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "ALL" }));
+                cbxDepartment.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "ALL" }));
 
-                jButton2.setBackground(new java.awt.Color(255, 234, 234));
-                jButton2.setText("Clear Filter");
+                btnClearFilter.setBackground(new java.awt.Color(255, 234, 234));
+                btnClearFilter.setText("Clear Filter");
+                btnClearFilter.addActionListener(this::btnClearFilterActionPerformed);
 
                 javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
                 jPanel1.setLayout(jPanel1Layout);
@@ -88,11 +101,11 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                                 .addComponent(jLabel4)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(jComboBox1, 0, 280, Short.MAX_VALUE)
+                                                .addComponent(cbxDepartment, 0, 323, Short.MAX_VALUE)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(jButton2)
+                                                .addComponent(btnClearFilter)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(jButton1)))
+                                                .addComponent(btnCreateSubject)))
                                 .addContainerGap())
                 );
                 jPanel1Layout.setVerticalGroup(
@@ -102,10 +115,10 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel3)
                                         .addComponent(txtSearch, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnCreateSubject, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
                                         .addComponent(jLabel4)
-                                        .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(cbxDepartment, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(btnClearFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 584, Short.MAX_VALUE)
                                 .addContainerGap())
@@ -125,13 +138,14 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                         .addGroup(layout.createSequentialGroup()
                                 .addContainerGap()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addContainerGap())
                                         .addGroup(layout.createSequentialGroup()
                                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(jLabel1)
-                                                        .addComponent(jLabel2))
-                                                .addGap(0, 0, Short.MAX_VALUE)))
-                                .addContainerGap())
+                                                        .addComponent(jLabel2)
+                                                        .addComponent(jLabel1))
+                                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 );
                 layout.setVerticalGroup(
                         layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -146,18 +160,37 @@ public class RegistrarSubjectPanel extends javax.swing.JPanel {
                 );
         }// </editor-fold>//GEN-END:initComponents
 
+        private void menuItemUpdateSubjectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemUpdateSubjectActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_menuItemUpdateSubjectActionPerformed
+
+        private void menuItemDeleteSubjectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemDeleteSubjectActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_menuItemDeleteSubjectActionPerformed
+
+        private void btnClearFilterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnClearFilterActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_btnClearFilterActionPerformed
+
+        private void btnCreateSubjectActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCreateSubjectActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_btnCreateSubjectActionPerformed
+
 
         // Variables declaration - do not modify//GEN-BEGIN:variables
-        private javax.swing.JButton jButton1;
-        private javax.swing.JButton jButton2;
-        private javax.swing.JComboBox<String> jComboBox1;
+        private javax.swing.JButton btnClearFilter;
+        private javax.swing.JButton btnCreateSubject;
+        private javax.swing.JComboBox<String> cbxDepartment;
         private javax.swing.JLabel jLabel1;
         private javax.swing.JLabel jLabel2;
         private javax.swing.JLabel jLabel3;
         private javax.swing.JLabel jLabel4;
         private javax.swing.JPanel jPanel1;
+        private javax.swing.JPopupMenu jPopupMenu1;
         private javax.swing.JScrollPane jScrollPane1;
-        private javax.swing.JTable jTable1;
+        private javax.swing.JMenuItem menuItemDeleteSubject;
+        private javax.swing.JMenuItem menuItemUpdateSubject;
+        private javax.swing.JTable tableSubjects;
         private javax.swing.JTextField txtSearch;
         // End of variables declaration//GEN-END:variables
 }
