@@ -1,5 +1,9 @@
 package com.group5.paul_esys.screens.registrar.forms;
 
+import com.group5.paul_esys.modules.departments.model.Department;
+import com.group5.paul_esys.modules.departments.services.DepartmentService;
+import javax.swing.JOptionPane;
+
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
@@ -12,14 +16,94 @@ package com.group5.paul_esys.screens.registrar.forms;
 public class DepartmentForm extends javax.swing.JFrame {
     
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(DepartmentForm.class.getName());
+    private final DepartmentService departmentService = DepartmentService.getInstance();
+    private final Runnable onSavedCallback;
+    private final Department editingDepartment;
 
     /**
      * Creates new form DepForm
      */
     public DepartmentForm() {
+        this(null, null);
+    }
+
+    public DepartmentForm(Department editingDepartment, Runnable onSavedCallback) {
+        this.editingDepartment = editingDepartment;
+        this.onSavedCallback = onSavedCallback;
         this.setUndecorated(true);
         initComponents();
         this.setLocationRelativeTo(null);
+        initializeForm();
+    }
+
+    private void initializeForm() {
+        if (editingDepartment == null) {
+            return;
+        }
+
+        jLabel1.setText("Update Department");
+        jLabel2.setText("Update existing department");
+        btnSave.setText("Update");
+
+        txtDepart.setText(editingDepartment.getDepartmentName());
+        txtAreaDescription.setText(
+            editingDepartment.getDescription() == null ? "" : editingDepartment.getDescription()
+        );
+    }
+
+    private boolean isValidForm() {
+        if (txtDepart.getText() == null || txtDepart.getText().trim().isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Department name is required.",
+                "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        return true;
+    }
+
+    private void saveDepartment() {
+        if (!isValidForm()) {
+            return;
+        }
+
+        Department department = editingDepartment == null ? new Department() : editingDepartment;
+        department
+            .setDepartmentName(txtDepart.getText().trim())
+            .setDescription(txtAreaDescription.getText().trim());
+
+        boolean success =
+            editingDepartment == null
+                ? departmentService.createDepartment(department)
+                : departmentService.updateDepartment(department);
+
+        if (!success) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Failed to save department. Please try again.",
+                "Save Failed",
+                JOptionPane.ERROR_MESSAGE
+            );
+            return;
+        }
+
+        JOptionPane.showMessageDialog(
+            this,
+            editingDepartment == null
+                ? "Department created successfully."
+                : "Department updated successfully.",
+            "Success",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+
+        if (onSavedCallback != null) {
+            onSavedCallback.run();
+        }
+
+        dispose();
     }
 
     /**
@@ -104,15 +188,17 @@ public class DepartmentForm extends javax.swing.JFrame {
         }// </editor-fold>//GEN-END:initComponents
 
     private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
-        // TODO add your handling code here:
+        dispose();
     }//GEN-LAST:event_btnCancelActionPerformed
 
     private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        // TODO add your handling code here:
+        saveDepartment();
     }//GEN-LAST:event_btnSaveActionPerformed
 
         private void txtAreaDescriptionKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtAreaDescriptionKeyReleased
-                // TODO add your handling code here:
+            if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                saveDepartment();
+            }
         }//GEN-LAST:event_txtAreaDescriptionKeyReleased
 
     /**
