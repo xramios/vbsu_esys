@@ -124,13 +124,12 @@ class SemesterSeeder(BaseSeeder):
 
         cursor = self.db_manager.connection.cursor()
         try:
-            # Group subjects by curriculum for assignment
-            curriculum_subjects = {}
+            courses_by_id = {course.id: course for course in self.state.courses}
+            department_subjects = {}
             for subject in self.state.subjects:
-                if subject.curriculum_id:
-                    if subject.curriculum_id not in curriculum_subjects:
-                        curriculum_subjects[subject.curriculum_id] = []
-                    curriculum_subjects[subject.curriculum_id].append(subject)
+                if subject.department_id not in department_subjects:
+                    department_subjects[subject.department_id] = []
+                department_subjects[subject.department_id].append(subject)
 
             for semester in tqdm(self.state.semesters, desc="Creating semester subjects", unit="semester"):
                 # Find curriculum for this semester
@@ -142,15 +141,17 @@ class SemesterSeeder(BaseSeeder):
                 if not curriculum:
                     continue
 
-                # Get subjects for this curriculum
-                subjects = curriculum_subjects.get(curriculum.id, [])
+                course = courses_by_id.get(curriculum.course_id)
+                subjects = department_subjects.get(course.department_id, []) if course else []
 
-                if not subjects:
-                    # Fallback: assign random subjects if no curriculum link
-                    subjects = random.sample(self.state.subjects, min(10, len(self.state.subjects)))
+                if subjects:
+                    selected_subjects = random.sample(subjects, min(15, len(subjects)))
+                else:
+                    # Fallback: assign random subjects if there are no department subjects.
+                    selected_subjects = random.sample(self.state.subjects, min(10, len(self.state.subjects)))
 
                 # Assign subjects to this semester with year levels (1-4)
-                for subject in subjects[:15]:  # Limit to 15 subjects per semester
+                for subject in selected_subjects:
                     year_level = random.randint(1, 4)
 
                     if self.db_manager.db_type == "derby":

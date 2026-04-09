@@ -45,6 +45,7 @@ DERBY_SHARED_JAR_PATH: str = "derbyshared-10.17.1.0.jar"
 # =============================================================================
 
 TABLES_TO_CLEAR: list[str] = [
+    "student_semester_progress",
     "student_enrolled_subjects",
     "semester_subjects",
     "enrollments_details",

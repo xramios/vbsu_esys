@@ -149,7 +149,6 @@ class Subject:
     units: float
     department_id: int
     description: Optional[str] = None
-    curriculum_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -308,6 +307,21 @@ class StudentEnrolledSubject:
 
 
 @dataclass
+class StudentSemesterProgress:
+    """Represents a student's progress summary for a curriculum semester."""
+
+    student_id: str
+    curriculum_id: int
+    semester_id: int
+    status: str = "NOT_STARTED"
+    id: Optional[int] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+@dataclass
 class SeedingState:
     """Maintains state across seeding operations."""
 
@@ -325,3 +339,4 @@ class SeedingState:
     semesters: List[Semester] = field(default_factory=list)
     semester_subjects: List[SemesterSubject] = field(default_factory=list)
     student_enrolled_subjects: List[StudentEnrolledSubject] = field(default_factory=list)
+    student_semester_progress: List[StudentSemesterProgress] = field(default_factory=list)

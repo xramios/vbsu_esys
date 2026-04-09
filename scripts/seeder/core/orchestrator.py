@@ -72,6 +72,7 @@ class SeedingOrchestrator:
             self.academic_seeder.seed_prerequisites()
             self.semester_seeder.seed()
             self.enrollment_seeder.seed_enrollments()
+            self.enrollment_seeder.seed_student_semester_progress()
 
             self._print_summary()
             return True
@@ -148,3 +149,4 @@ class SeedingOrchestrator:
         print(f"Semesters: {len(self.state.semesters)}")
         print(f"Semester subjects: {len(self.state.semester_subjects)}")
         print(f"Student enrolled subjects: {len(self.state.student_enrolled_subjects)}")
+        print(f"Student semester progress: {len(self.state.student_semester_progress)}")

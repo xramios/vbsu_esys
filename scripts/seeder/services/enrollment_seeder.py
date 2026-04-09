@@ -22,7 +22,14 @@ from seeder.config.constants import (
     ENROLLMENTS_PER_STUDENT,
 )
 from seeder.utils.faker_instance import fake
-from seeder.models.data_models import EnrollmentPeriod, Room, Schedule, Section
+from seeder.models.data_models import (
+    EnrollmentPeriod,
+    Room,
+    Schedule,
+    Section,
+    StudentEnrolledSubject,
+    StudentSemesterProgress,
+)
 
 if TYPE_CHECKING:
     from seeder.core.database import DatabaseManager
@@ -105,6 +112,23 @@ class EnrollmentSeeder(BaseSeeder):
             PRIMARY KEY (student_id, semester_subject_id),
             FOREIGN KEY (student_id) REFERENCES APP.students(student_id),
             FOREIGN KEY (semester_subject_id) REFERENCES APP.semester_subjects(id)
+        )
+    """
+
+    STUDENT_SEMESTER_PROGRESS_CREATE_SQL = """
+        CREATE TABLE APP.student_semester_progress (
+            id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            student_id VARCHAR(32) NOT NULL,
+            curriculum_id BIGINT NOT NULL,
+            semester_id BIGINT NOT NULL,
+            status VARCHAR(20) CHECK (status IN ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED')) NOT NULL DEFAULT 'NOT_STARTED',
+            started_at TIMESTAMP,
+            completed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (student_id) REFERENCES APP.students(student_id),
+            FOREIGN KEY (curriculum_id) REFERENCES APP.curriculum(id),
+            FOREIGN KEY (semester_id) REFERENCES APP.semester(id)
         )
     """
 
@@ -349,6 +373,253 @@ class EnrollmentSeeder(BaseSeeder):
         self.seed_enrollment_periods()
         self.seed_schedules()
         self.seed_enrollments()
+        self.seed_student_semester_progress()
+
+    def seed_student_semester_progress(self) -> None:
+        """Seed student_semester_progress based on subject enrollment activity."""
+        print("Seeding student semester progress...")
+
+        if self.db_manager.db_type == "derby":
+            self.create_table_if_not_exists(
+                "student_semester_progress",
+                self.STUDENT_SEMESTER_PROGRESS_CREATE_SQL,
+            )
+
+        self.state.student_semester_progress.clear()
+
+        course_curriculums: dict[int, list] = {}
+        for curriculum in self.state.curriculums:
+            course_curriculums.setdefault(curriculum.course_id, []).append(curriculum)
+
+        semester_subjects_by_id = {
+            semester_subject.id: semester_subject
+            for semester_subject in self.state.semester_subjects
+        }
+        required_subject_ids_by_semester: dict[int, set[int]] = {}
+        for semester_subject in self.state.semester_subjects:
+            required_subject_ids_by_semester.setdefault(semester_subject.semester_id, set()).add(
+                semester_subject.id
+            )
+
+        student_subject_status_by_semester: dict[tuple[str, int], dict[int, str]] = {}
+        for enrolled_subject in self.state.student_enrolled_subjects:
+            semester_subject = semester_subjects_by_id.get(enrolled_subject.semester_subject_id)
+            if semester_subject is None:
+                continue
+
+            key = (enrolled_subject.student_id, semester_subject.semester_id)
+            statuses_by_subject = student_subject_status_by_semester.setdefault(key, {})
+            existing_status = statuses_by_subject.get(semester_subject.id)
+            statuses_by_subject[semester_subject.id] = self._prefer_subject_status(
+                existing_status,
+                enrolled_subject.status,
+            )
+
+        semesters_by_curriculum: dict[int, list] = {}
+        for semester in self.state.semesters:
+            semesters_by_curriculum.setdefault(semester.curriculum_id, []).append(semester)
+
+        cursor = self.db_manager.connection.cursor()
+        try:
+            if self.db_manager.db_type == "derby":
+                cursor.execute("SELECT id, student_id, semester_id FROM APP.student_semester_progress")
+            else:
+                cursor.execute("SELECT id, student_id, semester_id FROM student_semester_progress")
+
+            existing_progress_ids = {
+                (row[1], row[2]): row[0]
+                for row in cursor.fetchall()
+            }
+
+            for student in tqdm(self.state.students, desc="Creating semester progress", unit="student"):
+                student_curriculum = self._select_student_curriculum(student, course_curriculums)
+                if student_curriculum is None:
+                    continue
+
+                matching_semesters = semesters_by_curriculum.get(student_curriculum.id, [])
+
+                for semester in matching_semesters:
+                    required_subject_ids = required_subject_ids_by_semester.get(semester.id, set())
+                    subject_statuses = student_subject_status_by_semester.get(
+                        (student.student_id, semester.id),
+                        {},
+                    )
+
+                    status, started_at, completed_at = self._derive_semester_progress(
+                        required_subject_ids,
+                        subject_statuses,
+                    )
+
+                    started_at_value = self.format_timestamp(started_at) if started_at else None
+                    completed_at_value = self.format_timestamp(completed_at) if completed_at else None
+                    progress_key = (student.student_id, semester.id)
+                    progress_id = existing_progress_ids.get(progress_key)
+
+                    if progress_id is None:
+                        if self.db_manager.db_type == "derby":
+                            query = """
+                                INSERT INTO APP.student_semester_progress
+                                (student_id, curriculum_id, semester_id, status, started_at, completed_at)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """
+                            cursor.execute(
+                                query,
+                                (
+                                    student.student_id,
+                                    student_curriculum.id,
+                                    semester.id,
+                                    status,
+                                    started_at_value,
+                                    completed_at_value,
+                                ),
+                            )
+                        else:
+                            query = """
+                                INSERT INTO student_semester_progress
+                                (student_id, curriculum_id, semester_id, status, started_at, completed_at)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                            """
+                            cursor.execute(
+                                query,
+                                (
+                                    student.student_id,
+                                    student_curriculum.id,
+                                    semester.id,
+                                    status,
+                                    started_at,
+                                    completed_at,
+                                ),
+                            )
+
+                        progress_id = self.adapter.get_last_insert_id(
+                            cursor,
+                            "student_semester_progress",
+                        )
+                        existing_progress_ids[progress_key] = progress_id
+                    else:
+                        if self.db_manager.db_type == "derby":
+                            query = """
+                                UPDATE APP.student_semester_progress
+                                SET curriculum_id = ?, status = ?, started_at = ?, completed_at = ?,
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE id = ?
+                            """
+                            cursor.execute(
+                                query,
+                                (
+                                    student_curriculum.id,
+                                    status,
+                                    started_at_value,
+                                    completed_at_value,
+                                    progress_id,
+                                ),
+                            )
+                        else:
+                            query = """
+                                UPDATE student_semester_progress
+                                SET curriculum_id = %s, status = %s, started_at = %s, completed_at = %s,
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE id = %s
+                            """
+                            cursor.execute(
+                                query,
+                                (
+                                    student_curriculum.id,
+                                    status,
+                                    started_at,
+                                    completed_at,
+                                    progress_id,
+                                ),
+                            )
+
+                    self.state.student_semester_progress.append(
+                        StudentSemesterProgress(
+                            id=progress_id,
+                            student_id=student.student_id,
+                            curriculum_id=student_curriculum.id,
+                            semester_id=semester.id,
+                            status=status,
+                            started_at=started_at,
+                            completed_at=completed_at,
+                        )
+                    )
+
+            self.db_manager.commit()
+        finally:
+            cursor.close()
+
+        print(
+            "Created "
+            f"{len(self.state.student_semester_progress)} student semester progress records"
+        )
+
+    @staticmethod
+    def _prefer_subject_status(existing_status: str | None, new_status: str) -> str:
+        """Pick the strongest status when the same subject appears multiple times."""
+        priority = {"COMPLETED": 3, "ENROLLED": 2, "DROPPED": 1}
+        if existing_status is None:
+            return new_status
+        if priority.get(new_status, 0) >= priority.get(existing_status, 0):
+            return new_status
+        return existing_status
+
+    @staticmethod
+    def _derive_semester_progress(
+        required_subject_ids: set[int],
+        subject_statuses: dict[int, str],
+    ) -> tuple[str, datetime | None, datetime | None]:
+        """Compute semester progress status and activity timestamps."""
+        attempted_required_subject_ids = {
+            subject_id for subject_id in subject_statuses if subject_id in required_subject_ids
+        }
+        if not attempted_required_subject_ids:
+            return "NOT_STARTED", None, None
+
+        completed_required_subject_ids = {
+            subject_id
+            for subject_id, status in subject_statuses.items()
+            if subject_id in required_subject_ids and status == "COMPLETED"
+        }
+
+        if required_subject_ids and required_subject_ids.issubset(completed_required_subject_ids):
+            started_at = fake.date_time_between(start_date="-4y", end_date="-1y")
+            completed_at = fake.date_time_between(start_date=started_at, end_date="now")
+            if completed_at < started_at:
+                completed_at = started_at + timedelta(days=1)
+            return "COMPLETED", started_at, completed_at
+
+        started_at = fake.date_time_between(start_date="-2y", end_date="now")
+        return "IN_PROGRESS", started_at, None
+
+    def _select_student_curriculum(self, student: any, course_curriculums: dict[int, list]) -> any:
+        """Select the best curriculum for a student from their course curriculums."""
+        matching_curriculums = course_curriculums.get(student.course_id, [])
+        if not matching_curriculums:
+            return None
+
+        admission_year = self._extract_admission_year(student.student_id)
+        if admission_year is None:
+            return max(
+                matching_curriculums,
+                key=lambda curriculum: getattr(curriculum.cur_year, "year", 0),
+            )
+
+        return min(
+            matching_curriculums,
+            key=lambda curriculum: abs(
+                getattr(curriculum.cur_year, "year", admission_year) - admission_year
+            ),
+        )
+
+    @staticmethod
+    def _extract_admission_year(student_id: str) -> int | None:
+        """Extract admission year from student IDs like YYYY-#####."""
+        if not student_id or "-" not in student_id:
+            return None
+        year_part = student_id.split("-", maxsplit=1)[0]
+        if not year_part.isdigit():
+            return None
+        return int(year_part)
 
     def _create_enrollment_details(
         self,
@@ -519,6 +790,7 @@ class EnrollmentSeeder(BaseSeeder):
             student_id: Student ID
             semester_subject_id: Semester Subject ID (from semester_subjects table)
         """
+        inserted = False
         if self.db_manager.db_type == "derby":
             # Derby doesn't support INSERT IGNORE, check existence first
             cursor.execute(
@@ -534,9 +806,20 @@ class EnrollmentSeeder(BaseSeeder):
                     VALUES (?, ?, 'ENROLLED')
                 """
                 cursor.execute(query, (student_id, semester_subject_id))
+                inserted = True
         else:
             query = """
                 INSERT IGNORE INTO student_enrolled_subjects (student_id, semester_subject_id, status)
                 VALUES (%s, %s, 'ENROLLED')
             """
             cursor.execute(query, (student_id, semester_subject_id))
+            inserted = cursor.rowcount > 0
+
+        if inserted:
+            self.state.student_enrolled_subjects.append(
+                StudentEnrolledSubject(
+                    student_id=student_id,
+                    semester_subject_id=semester_subject_id,
+                    status="ENROLLED",
+                )
+            )

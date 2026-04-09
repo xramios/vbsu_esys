@@ -50,11 +50,9 @@ class AcademicSeeder(BaseSeeder):
             subject_code VARCHAR(32),
             units FLOAT,
             description CLOB,
-            curriculum_id BIGINT,
             department_id BIGINT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (curriculum_id) REFERENCES APP.curriculum(id),
             FOREIGN KEY (department_id) REFERENCES APP.departments(id)
         )
     """
@@ -230,32 +228,27 @@ class AcademicSeeder(BaseSeeder):
                 units = template[2]
                 description = template[3]
 
-                curriculum = (
-                    random.choice(self.state.curriculums) if self.state.curriculums else None
-                )
                 department = random.choice(self.state.departments)
-
-                curriculum_id = curriculum.id if curriculum else None
 
                 if self.db_manager.db_type == "derby":
                     query = """
                         INSERT INTO APP.subjects
-                        (subject_name, subject_code, units, description, curriculum_id, department_id)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        (subject_name, subject_code, units, description, department_id)
+                        VALUES (?, ?, ?, ?, ?)
                     """
                     cursor.execute(
                         query,
-                        (subject_name, subject_code, units, description, curriculum_id, department.id),
+                        (subject_name, subject_code, units, description, department.id),
                     )
                 else:
                     query = """
                         INSERT INTO subjects
-                        (subject_name, subject_code, units, description, curriculum_id, department_id)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        (subject_name, subject_code, units, description, department_id)
+                        VALUES (%s, %s, %s, %s, %s)
                     """
                     cursor.execute(
                         query,
-                        (subject_name, subject_code, units, description, curriculum_id, department.id),
+                        (subject_name, subject_code, units, description, department.id),
                     )
 
                 last_id = self.adapter.get_last_insert_id(cursor, "subjects")
@@ -268,7 +261,6 @@ class AcademicSeeder(BaseSeeder):
                         units=units,
                         department_id=department.id,
                         description=description,
-                        curriculum_id=curriculum_id,
                     )
                 )
 
