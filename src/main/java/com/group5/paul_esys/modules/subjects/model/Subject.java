@@ -9,7 +9,6 @@ public class Subject {
   private String subjectCode;
   private Float units;
   private String description;
-  private Long curriculumId;
   private Long departmentId;
   private Timestamp updatedAt;
   private Timestamp createdAt;
@@ -17,13 +16,12 @@ public class Subject {
   public Subject() {
   }
 
-  public Subject(Long id, String subjectName, String subjectCode, Float units, String description, Long curriculumId, Long departmentId, Timestamp updatedAt, Timestamp createdAt) {
+  public Subject(Long id, String subjectName, String subjectCode, Float units, String description, Long departmentId, Timestamp updatedAt, Timestamp createdAt) {
     this.id = id;
     this.subjectName = subjectName;
     this.subjectCode = subjectCode;
     this.units = units;
     this.description = description;
-    this.curriculumId = curriculumId;
     this.departmentId = departmentId;
     this.updatedAt = updatedAt;
     this.createdAt = createdAt;
@@ -71,15 +69,6 @@ public class Subject {
 
   public Subject setDescription(String description) {
     this.description = description;
-    return this;
-  }
-
-  public Long getCurriculumId() {
-    return curriculumId;
-  }
-
-  public Subject setCurriculumId(Long curriculumId) {
-    this.curriculumId = curriculumId;
     return this;
   }
 

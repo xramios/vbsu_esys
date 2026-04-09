@@ -91,33 +91,20 @@ public class SubjectService {
   }
 
   public List<Subject> getSubjectsByCurriculum(Long curriculumId) {
-    List<Subject> subjects = new ArrayList<>();
-    try (Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM subjects WHERE curriculum_id = ? ORDER BY subject_code")) {
-      ps.setLong(1, curriculumId);
-
-      try (ResultSet rs = ps.executeQuery()) {
-        while (rs.next()) {
-          subjects.add(SubjectUtils.mapResultSetToSubject(rs));
-        }
-      }
-    } catch (SQLException e) {
-      logger.error("ERROR: " + e.getMessage(), e);
-    }
-    return subjects;
+    // subjects table no longer stores curriculum_id; keep this method for compatibility.
+    return getAllSubjects();
   }
 
   public boolean createSubject(Subject subject) {
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO subjects (subject_name, subject_code, units, description, curriculum_id, department_id) VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO subjects (subject_name, subject_code, units, description, department_id) VALUES (?, ?, ?, ?, ?)"
         )) {
       ps.setString(1, subject.getSubjectName());
       ps.setString(2, subject.getSubjectCode());
       ps.setFloat(3, subject.getUnits());
       ps.setString(4, subject.getDescription());
-      ps.setLong(5, subject.getCurriculumId());
-      ps.setLong(6, subject.getDepartmentId());
+      ps.setLong(5, subject.getDepartmentId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
@@ -129,15 +116,14 @@ public class SubjectService {
   public boolean updateSubject(Subject subject) {
     try (Connection conn = ConnectionService.getConnection();
       PreparedStatement ps = conn.prepareStatement(
-        "UPDATE subjects SET subject_name = ?, subject_code = ?, units = ?, description = ?, curriculum_id = ?, department_id = ? WHERE id = ?"
+        "UPDATE subjects SET subject_name = ?, subject_code = ?, units = ?, description = ?, department_id = ? WHERE id = ?"
       )) {
       ps.setString(1, subject.getSubjectName());
       ps.setString(2, subject.getSubjectCode());
       ps.setFloat(3, subject.getUnits());
       ps.setString(4, subject.getDescription());
-      ps.setLong(5, subject.getCurriculumId());
-      ps.setLong(6, subject.getDepartmentId());
-      ps.setLong(7, subject.getId());
+      ps.setLong(5, subject.getDepartmentId());
+      ps.setLong(6, subject.getId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {

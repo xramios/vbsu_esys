@@ -14,7 +14,6 @@ public class SubjectUtils {
         rs.getString("subject_code"),
         rs.getFloat("units"),
         rs.getString("description"),
-        rs.getLong("curriculum_id"),
         rs.getLong("department_id"),
         rs.getTimestamp("updated_at"),
         rs.getTimestamp("created_at")
