@@ -123,6 +123,12 @@ ROOM_STATUSES: List[str] = ["AVAILABLE", "UNAVAILABLE", "MAINTENANCE"]
 BUILDING_NAMES: List[str] = ["Engineering", "Business", "Arts", "Science", "Main"]
 
 # =============================================================================
+# Section Configuration
+# =============================================================================
+
+SECTION_STATUSES: List[str] = ["OPEN", "CLOSED", "WAITLIST", "DISSOLVED"]
+
+# =============================================================================
 # Subject Templates: (name, code_prefix, units, description)
 # =============================================================================
 

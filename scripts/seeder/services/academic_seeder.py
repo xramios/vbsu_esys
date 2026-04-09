@@ -17,6 +17,7 @@ from seeder.config.constants import (
     SUBJECT_TEMPLATES,
     SECTIONS_PER_SUBJECT,
     SECTION_CAPACITY_RANGE,
+    SECTION_STATUSES,
     PREREQUISITE_PROBABILITY,
     PREREQUISITES_PER_SUBJECT,
     SUBJECTS_WITH_PREREQUISITES,
@@ -62,11 +63,10 @@ class AcademicSeeder(BaseSeeder):
             id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             section_name VARCHAR(48),
             section_code VARCHAR(48),
-            subject_id BIGINT,
             capacity INT NOT NULL,
+            status VARCHAR(20) CHECK (status IN ('OPEN', 'CLOSED', 'WAITLIST', 'DISSOLVED')) DEFAULT 'OPEN',
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (subject_id) REFERENCES APP.subjects(id)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """
 
@@ -271,7 +271,7 @@ class AcademicSeeder(BaseSeeder):
         print(f"Created {len(self.state.subjects)} subjects")
 
     def seed_sections(self) -> None:
-        """Seed sections table with class sections for each subject."""
+        """Seed sections table with reusable class sections."""
         print("Seeding sections...")
 
         if self.db_manager.db_type == "derby":
@@ -279,38 +279,37 @@ class AcademicSeeder(BaseSeeder):
 
         cursor = self.db_manager.connection.cursor()
         try:
-            for subject in tqdm(self.state.subjects, desc="Creating sections", unit="subject"):
-                num_sections = random.randint(*SECTIONS_PER_SUBJECT)
+            section_count = random.randint(*SECTIONS_PER_SUBJECT) * max(len(self.state.courses), 1)
+            for section_index in tqdm(range(section_count), desc="Creating sections", unit="section"):
+                section_name = f"Block {section_index + 1}"
+                section_code = f"SEC-{section_index + 1:03d}"
+                capacity = random.randint(*SECTION_CAPACITY_RANGE)
+                status = random.choices(SECTION_STATUSES, weights=[0.82, 0.08, 0.07, 0.03], k=1)[0]
 
-                for i in range(num_sections):
-                    section_name = f"{subject.code}-{chr(65 + i)}"
-                    section_code = f"SEC{subject.id}-{i+1}"
-                    capacity = random.randint(*SECTION_CAPACITY_RANGE)
+                if self.db_manager.db_type == "derby":
+                    query = """
+                        INSERT INTO APP.sections (section_name, section_code, capacity, status)
+                        VALUES (?, ?, ?, ?)
+                    """
+                    cursor.execute(query, (section_name, section_code, capacity, status))
+                else:
+                    query = """
+                        INSERT INTO sections (section_name, section_code, capacity, status)
+                        VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(query, (section_name, section_code, capacity, status))
 
-                    if self.db_manager.db_type == "derby":
-                        query = """
-                            INSERT INTO APP.sections (section_name, section_code, subject_id, capacity)
-                            VALUES (?, ?, ?, ?)
-                        """
-                        cursor.execute(query, (section_name, section_code, subject.id, capacity))
-                    else:
-                        query = """
-                            INSERT INTO sections (section_name, section_code, subject_id, capacity)
-                            VALUES (%s, %s, %s, %s)
-                        """
-                        cursor.execute(query, (section_name, section_code, subject.id, capacity))
+                last_id = self.adapter.get_last_insert_id(cursor, "sections")
 
-                    last_id = self.adapter.get_last_insert_id(cursor, "sections")
-
-                    self.state.sections.append(
-                        Section(
-                            id=last_id,
-                            section_name=section_name,
-                            section_code=section_code,
-                            subject_id=subject.id,
-                            capacity=capacity,
-                        )
+                self.state.sections.append(
+                    Section(
+                        id=last_id,
+                        section_name=section_name,
+                        section_code=section_code,
+                        capacity=capacity,
+                        status=status,
                     )
+                )
 
             self.db_manager.commit()
         finally:

@@ -173,13 +173,13 @@ class Subject:
 
 @dataclass
 class Section:
-    """Represents a class section for a subject."""
+    """Represents a reusable class section."""
 
     id: int
     section_name: str
     section_code: str
-    subject_id: int
     capacity: int
+    status: str = "OPEN"
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -211,6 +211,7 @@ class EnrollmentPeriod:
     semester: str
     start_date: datetime
     end_date: datetime
+    description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -231,16 +232,28 @@ class EnrollmentPeriod:
 class Schedule:
     """Represents a class schedule entry."""
 
-    section_id: int
+    offering_id: int
     room_id: int
     faculty_id: int
     day: str
     start_time: str
     end_time: str
-    enrollment_period_id: int
     id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+
+@dataclass
+class Offering:
+    """Represents an enrollable class offering for a term."""
+
+    id: int
+    subject_id: int
+    section_id: int
+    enrollment_period_id: int
+    semester_subject_id: Optional[int] = None
+    capacity: Optional[int] = None
+    created_at: Optional[datetime] = None
 
 
 @dataclass
@@ -253,6 +266,8 @@ class Enrollment:
     max_units: float
     total_units: float
     submitted_at: datetime
+    approved_by: Optional[int] = None
+    approved_at: Optional[datetime] = None
     id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -263,8 +278,7 @@ class EnrollmentDetail:
     """Represents an enrollment detail (selected subject)."""
 
     enrollment_id: int
-    section_id: int
-    subject_id: int
+    offering_id: int
     units: float
     status: str
     id: Optional[int] = None
@@ -279,6 +293,7 @@ class Semester:
     id: int
     curriculum_id: int
     semester: str
+    year_level: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -290,7 +305,6 @@ class SemesterSubject:
     id: int
     semester_id: int
     subject_id: int
-    year_level: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -300,6 +314,8 @@ class StudentEnrolledSubject:
     """Represents a student's subject enrollment with status."""
 
     student_id: str
+    enrollment_id: int
+    offering_id: int
     semester_subject_id: int
     status: str = "ENROLLED"
     created_at: Optional[datetime] = None
@@ -334,6 +350,8 @@ class SeedingState:
     students: List[Student] = field(default_factory=list)
     subjects: List[Subject] = field(default_factory=list)
     sections: List[Section] = field(default_factory=list)
+    schedules: List[Schedule] = field(default_factory=list)
+    offerings: List[Offering] = field(default_factory=list)
     curriculums: List[Curriculum] = field(default_factory=list)
     enrollment_periods: List[EnrollmentPeriod] = field(default_factory=list)
     semesters: List[Semester] = field(default_factory=list)
