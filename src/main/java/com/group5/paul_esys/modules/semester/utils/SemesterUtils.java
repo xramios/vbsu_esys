@@ -11,6 +11,7 @@ public class SemesterUtils {
       rs.getLong("id"),
       rs.getLong("curriculum_id"),
       rs.getString("semester"),
+      rs.getInt("year_level"),
       rs.getTimestamp("created_at"),
       rs.getTimestamp("updated_at")
     );

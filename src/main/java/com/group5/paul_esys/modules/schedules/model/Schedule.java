@@ -7,28 +7,26 @@ import java.sql.Time;
 public class Schedule {
 
   private Long id;
-  private Long sectionId;
+  private Long offeringId;
   private Long roomId;
   private Long facultyId;
   private DayOfWeek day;
   private Time startTime;
   private Time endTime;
-  private Long enrollmentPeriodId;
   private Timestamp updatedAt;
   private Timestamp createdAt;
 
   public Schedule() {
   }
 
-  public Schedule(Long id, Long sectionId, Long roomId, Long facultyId, DayOfWeek day, Time startTime, Time endTime, Long enrollmentPeriodId, Timestamp updatedAt, Timestamp createdAt) {
+  public Schedule(Long id, Long offeringId, Long roomId, Long facultyId, DayOfWeek day, Time startTime, Time endTime, Timestamp updatedAt, Timestamp createdAt) {
     this.id = id;
-    this.sectionId = sectionId;
+    this.offeringId = offeringId;
     this.roomId = roomId;
     this.facultyId = facultyId;
     this.day = day;
     this.startTime = startTime;
     this.endTime = endTime;
-    this.enrollmentPeriodId = enrollmentPeriodId;
     this.updatedAt = updatedAt;
     this.createdAt = createdAt;
   }
@@ -42,12 +40,12 @@ public class Schedule {
     return this;
   }
 
-  public Long getSectionId() {
-    return sectionId;
+  public Long getOfferingId() {
+    return offeringId;
   }
 
-  public Schedule setSectionId(Long sectionId) {
-    this.sectionId = sectionId;
+  public Schedule setOfferingId(Long offeringId) {
+    this.offeringId = offeringId;
     return this;
   }
 
@@ -93,15 +91,6 @@ public class Schedule {
 
   public Schedule setEndTime(Time endTime) {
     this.endTime = endTime;
-    return this;
-  }
-
-  public Long getEnrollmentPeriodId() {
-    return enrollmentPeriodId;
-  }
-
-  public Schedule setEnrollmentPeriodId(Long enrollmentPeriodId) {
-    this.enrollmentPeriodId = enrollmentPeriodId;
     return this;
   }
 

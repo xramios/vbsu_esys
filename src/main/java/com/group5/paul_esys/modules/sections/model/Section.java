@@ -7,20 +7,24 @@ public class Section {
   private Long id;
   private String sectionName;
   private String sectionCode;
-  private Long subjectId;
   private Integer capacity;
+  private String status;
   private Timestamp updatedAt;
   private Timestamp createdAt;
 
   public Section() {
   }
 
-  public Section(Long id, String sectionName, String sectionCode, Long subjectId, Integer capacity, Timestamp updatedAt, Timestamp createdAt) {
+  public Section(Long id, String sectionName, String sectionCode, Integer capacity, Timestamp updatedAt, Timestamp createdAt) {
+    this(id, sectionName, sectionCode, capacity, "OPEN", updatedAt, createdAt);
+  }
+
+  public Section(Long id, String sectionName, String sectionCode, Integer capacity, String status, Timestamp updatedAt, Timestamp createdAt) {
     this.id = id;
     this.sectionName = sectionName;
     this.sectionCode = sectionCode;
-    this.subjectId = subjectId;
     this.capacity = capacity;
+    this.status = status;
     this.updatedAt = updatedAt;
     this.createdAt = createdAt;
   }
@@ -52,21 +56,21 @@ public class Section {
     return this;
   }
 
-  public Long getSubjectId() {
-    return subjectId;
-  }
-
-  public Section setSubjectId(Long subjectId) {
-    this.subjectId = subjectId;
-    return this;
-  }
-
   public Integer getCapacity() {
     return capacity;
   }
 
   public Section setCapacity(Integer capacity) {
     this.capacity = capacity;
+    return this;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public Section setStatus(String status) {
+    this.status = status;
     return this;
   }
 

@@ -61,8 +61,29 @@ public class ScheduleService {
   public List<Schedule> getSchedulesBySection(Long sectionId) {
     List<Schedule> schedules = new ArrayList<>();
     try (Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement("SELECT * FROM schedules WHERE section_id = ? ORDER BY day, start_time")) {
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT s.* FROM schedules s "
+                + "INNER JOIN offerings o ON o.id = s.offering_id "
+                + "WHERE o.section_id = ? ORDER BY s.day, s.start_time"
+        )) {
       ps.setLong(1, sectionId);
+
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          schedules.add(ScheduleUtils.mapResultSetToSchedule(rs));
+        }
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+    return schedules;
+  }
+
+  public List<Schedule> getSchedulesByOffering(Long offeringId) {
+    List<Schedule> schedules = new ArrayList<>();
+    try (Connection conn = ConnectionService.getConnection();
+        PreparedStatement ps = conn.prepareStatement("SELECT * FROM schedules WHERE offering_id = ? ORDER BY day, start_time")) {
+      ps.setLong(1, offeringId);
 
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
@@ -129,15 +150,14 @@ public class ScheduleService {
   public boolean createSchedule(Schedule schedule) {
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO schedules (section_id, room_id, faculty_id, day, start_time, end_time, enrollment_period_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO schedules (offering_id, room_id, faculty_id, day, start_time, end_time) VALUES (?, ?, ?, ?, ?, ?)"
         )) {
-      ps.setLong(1, schedule.getSectionId());
-      ps.setLong(2, schedule.getRoomId());
-      ps.setLong(3, schedule.getFacultyId());
+      ps.setLong(1, schedule.getOfferingId());
+      ps.setObject(2, schedule.getRoomId());
+      ps.setObject(3, schedule.getFacultyId());
       ps.setString(4, schedule.getDay().name());
       ps.setTime(5, schedule.getStartTime());
       ps.setTime(6, schedule.getEndTime());
-      ps.setLong(7, schedule.getEnrollmentPeriodId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
@@ -149,16 +169,15 @@ public class ScheduleService {
   public boolean updateSchedule(Schedule schedule) {
     try (Connection conn = ConnectionService.getConnection();
       PreparedStatement ps = conn.prepareStatement(
-        "UPDATE schedules SET section_id = ?, room_id = ?, faculty_id = ?, day = ?, start_time = ?, end_time = ?, enrollment_period_id = ? WHERE id = ?"
+        "UPDATE schedules SET offering_id = ?, room_id = ?, faculty_id = ?, day = ?, start_time = ?, end_time = ? WHERE id = ?"
       )) {
-      ps.setLong(1, schedule.getSectionId());
-      ps.setLong(2, schedule.getRoomId());
-      ps.setLong(3, schedule.getFacultyId());
+      ps.setLong(1, schedule.getOfferingId());
+      ps.setObject(2, schedule.getRoomId());
+      ps.setObject(3, schedule.getFacultyId());
       ps.setString(4, schedule.getDay().name());
       ps.setTime(5, schedule.getStartTime());
       ps.setTime(6, schedule.getEndTime());
-      ps.setLong(7, schedule.getEnrollmentPeriodId());
-      ps.setLong(8, schedule.getId());
+      ps.setLong(7, schedule.getId());
       
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
