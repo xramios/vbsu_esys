@@ -7,6 +7,7 @@ package com.group5.paul_esys.screens.student;
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
 import com.group5.paul_esys.modules.courses.model.Course;
 import com.group5.paul_esys.modules.courses.services.CourseService;
+import com.group5.paul_esys.modules.enrollment_period.model.EnrollmentPeriod;
 import com.group5.paul_esys.modules.enrollment_period.services.EnrollmentPeriodService;
 import com.group5.paul_esys.modules.enrollments.model.Enrollment;
 import com.group5.paul_esys.modules.enrollments.model.EnrollmentDetail;
@@ -34,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableColumn;
 
 /**
  *
@@ -41,7 +44,16 @@ import javax.swing.*;
  */
 public class StudentDashboard extends javax.swing.JFrame {
 
+        private static final int CATALOG_COL_CODE = 0;
+        private static final int CATALOG_COL_SUBJECT_NAME = 1;
+        private static final int CATALOG_COL_UNITS = 2;
+        private static final int CATALOG_COL_OFFERING_ID = 6;
+        private static final int CATALOG_COL_SUBJECT_ID = 7;
+        private static final float MAX_ENROLLMENT_UNITS = 24.0f;
+
 	private Student currentStudent;
+        private final DefaultListModel<String> selectedSubjectsModel = new DefaultListModel<>();
+        private boolean hasActiveEnrollmentPeriod;
 
 	/**
 	 * Creates new form Dashboard
@@ -77,24 +89,129 @@ public class StudentDashboard extends javax.swing.JFrame {
 		this.setLocationRelativeTo(null);
 		this.windowBar1.setTitle("Welcome " + fullName);
 		this.currentStudent = student;
-		initStudentData(student);
-		loadSubjectCatalog("");
-		loadMySchedule();
+                initializeDashboardUi();
+                reloadStudentDashboardData();
 	}
 
+        private void initializeDashboardUi() {
+                configureSubjectCatalogTable();
+                configureScheduleTable();
+                configureSelectedSubjectsPanel();
+        }
+
+        private void reloadStudentDashboardData() {
+                initStudentData(currentStudent);
+                loadSubjectCatalog(txtSearch.getText());
+                loadMySchedule();
+        }
+
+        private void configureSubjectCatalogTable() {
+                DefaultTableModel model = new DefaultTableModel(
+                  new Object[][]{},
+                  new String[]{"Code", "Subject Name", "Units", "Section", "Schedule", "Slots", "Offering ID", "Subject ID"}
+                ) {
+                        @Override
+                        public Class<?> getColumnClass(int columnIndex) {
+                                return switch (columnIndex) {
+                                        case CATALOG_COL_UNITS -> Float.class;
+                                        case CATALOG_COL_OFFERING_ID, CATALOG_COL_SUBJECT_ID -> Long.class;
+                                        default -> String.class;
+                                };
+                        }
+
+                        @Override
+                        public boolean isCellEditable(int row, int column) {
+                                return false;
+                        }
+                };
+
+                tblSubjectCatalog.setModel(model);
+                tblSubjectCatalog.setRowHeight(26);
+                tblSubjectCatalog.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+                hideTableColumn(tblSubjectCatalog, CATALOG_COL_OFFERING_ID);
+                hideTableColumn(tblSubjectCatalog, CATALOG_COL_SUBJECT_ID);
+
+                tblSubjectCatalog.getSelectionModel().addListSelectionListener(evt -> {
+                        if (!evt.getValueIsAdjusting()) {
+                                refreshSelectedSubjectsPreview();
+                        }
+                });
+        }
+
+        private void configureScheduleTable() {
+                DefaultTableModel model = new DefaultTableModel(
+                  new Object[][]{},
+                  new String[]{"Code", "Course Name", "Instructor", "Schedule", "Room", "Credits"}
+                ) {
+                        @Override
+                        public boolean isCellEditable(int row, int column) {
+                                return false;
+                        }
+                };
+
+                tableSchedules.setModel(model);
+                tableSchedules.setRowHeight(26);
+        }
+
+        private void configureSelectedSubjectsPanel() {
+                jList1.setModel(selectedSubjectsModel);
+                refreshSelectedSubjectsPreview();
+        }
+
+        private void hideTableColumn(JTable table, int columnIndex) {
+                TableColumn column = table.getColumnModel().getColumn(columnIndex);
+                column.setMinWidth(0);
+                column.setMaxWidth(0);
+                column.setPreferredWidth(0);
+        }
+
+        private void refreshSelectedSubjectsPreview() {
+                selectedSubjectsModel.clear();
+                float totalUnits = 0.0f;
+
+                int[] selectedRows = tblSubjectCatalog.getSelectedRows();
+                for (int selectedRow : selectedRows) {
+                        int modelRow = tblSubjectCatalog.convertRowIndexToModel(selectedRow);
+                        String code = String.valueOf(tblSubjectCatalog.getModel().getValueAt(modelRow, CATALOG_COL_CODE));
+                        String subjectName = String.valueOf(tblSubjectCatalog.getModel().getValueAt(modelRow, CATALOG_COL_SUBJECT_NAME));
+                        float units = parseUnitsCell(tblSubjectCatalog.getModel().getValueAt(modelRow, CATALOG_COL_UNITS));
+
+                        selectedSubjectsModel.addElement(code + " - " + subjectName + " (" + formatUnits(units) + ")");
+                        totalUnits += units;
+                }
+
+                jLabel17.setText(formatUnits(totalUnits) + " / " + formatUnits(MAX_ENROLLMENT_UNITS) + " units");
+        }
+
 	private void loadSubjectCatalog(String keyword) {
-		javax.swing.table.DefaultTableModel model = (javax.swing.table.DefaultTableModel) tblSubjectCatalog.getModel();
+                DefaultTableModel model = (DefaultTableModel) tblSubjectCatalog.getModel();
 		model.setRowCount(0);
+                refreshSelectedSubjectsPreview();
 
-		Optional<Long> activeEnrollmentPeriodId = EnrollmentPeriodService.getInstance()
-		  .getCurrentEnrollmentPeriod()
-		  .map(period -> period.getId());
+                Optional<EnrollmentPeriod> activeEnrollmentPeriod = EnrollmentPeriodService.getInstance().getCurrentEnrollmentPeriod();
+                Optional<EnrollmentPeriod> catalogEnrollmentPeriod = activeEnrollmentPeriod.isPresent()
+                  ? activeEnrollmentPeriod
+                  : EnrollmentPeriodService.getInstance().getAllEnrollmentPeriods().stream().findFirst();
 
-		if (activeEnrollmentPeriodId.isEmpty()) {
-			return;
-		}
+                hasActiveEnrollmentPeriod = activeEnrollmentPeriod.isPresent();
+                btnSubmitSchedule.setEnabled(hasActiveEnrollmentPeriod);
 
-		List<Offering> offerings = OfferingService.getInstance().getOfferingsByEnrollmentPeriod(activeEnrollmentPeriodId.get());
+                if (catalogEnrollmentPeriod.isEmpty()) {
+                        jLabel14.setText("Subject Catalog - No enrollment period configured");
+                        return;
+                }
+
+                EnrollmentPeriod enrollmentPeriod = catalogEnrollmentPeriod.get();
+                String periodLabel = buildEnrollmentPeriodLabel(enrollmentPeriod);
+                if (hasActiveEnrollmentPeriod) {
+			labelAnnouncement.setText("Enrollment Period is open");
+                        jLabel14.setText("Subject Catalog - " + periodLabel);
+                } else {
+			labelAnnouncement.setText("Enrollment Period has ended");
+                        jLabel14.setText("Subject Catalog - " + periodLabel + " (Preview only)");
+                }
+
+                List<Offering> offerings = OfferingService.getInstance().getOfferingsByEnrollmentPeriod(enrollmentPeriod.getId());
 		if (offerings.isEmpty()) {
 			return;
 		}
@@ -120,8 +237,9 @@ public class StudentDashboard extends javax.swing.JFrame {
 			}
 
 			if (!normalizedKeyword.isEmpty()) {
-				boolean matchesKeyword = subject.getSubjectName().toLowerCase().contains(normalizedKeyword)
-				  || subject.getSubjectCode().toLowerCase().contains(normalizedKeyword);
+                                String subjectName = safeText(subject.getSubjectName(), "").toLowerCase();
+                                String subjectCode = safeText(subject.getSubjectCode(), "").toLowerCase();
+                                boolean matchesKeyword = subjectName.contains(normalizedKeyword) || subjectCode.contains(normalizedKeyword);
 				if (!matchesKeyword) {
 					continue;
 				}
@@ -134,7 +252,15 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 			addSubjectCatalogRow(model, subject, section, offering);
 		}
+
+                refreshSelectedSubjectsPreview();
 	}
+
+        private String buildEnrollmentPeriodLabel(EnrollmentPeriod period) {
+                String schoolYear = safeText(period.getSchoolYear(), "N/A");
+                String semester = safeText(period.getSemester(), "N/A");
+                return schoolYear + " - " + semester;
+        }
 
         private Map<Long, Long> getLatestSelectedOfferingBySubject() {
                 Map<Long, Long> selectedOfferingBySubject = new HashMap<>();
@@ -162,7 +288,7 @@ public class StudentDashboard extends javax.swing.JFrame {
         }
 
         private void addSubjectCatalogRow(
-                javax.swing.table.DefaultTableModel model,
+                DefaultTableModel model,
                 Subject subject,
                 Section section,
                 Offering offering
@@ -179,19 +305,22 @@ public class StudentDashboard extends javax.swing.JFrame {
                           .append(sched.getEndTime().toString().substring(0, 5)).append(" ");
                 }
 
-                int capacity = offering.getCapacity() == null ? section.getCapacity() : offering.getCapacity();
+                int capacity = normalizeCapacity(offering.getCapacity() == null ? section.getCapacity() : offering.getCapacity());
                 long enrolledCount = EnrollmentDetailService.getInstance().countSelectedByOffering(offering.getId());
                 long availableSlots = Math.max(0, capacity - enrolledCount);
+                String scheduleDisplay = schedString.length() == 0 ? "TBA" : schedString.toString().trim();
+                String slotsDisplay = capacity <= 0 ? "N/A" : availableSlots + "/" + capacity;
+                float units = subject.getUnits() == null ? 0.0f : subject.getUnits();
 
                 model.addRow(new Object[]{
-                        subject.getSubjectCode(),
-                        subject.getSubjectName(),
-                        String.valueOf(subject.getUnits()),
-                        section.getSectionCode(),
-                        schedString.toString().trim(),
-                        availableSlots + "/" + capacity,
-                        String.valueOf(offering.getId()),
-                        String.valueOf(subject.getId())
+                        safeText(subject.getSubjectCode(), "N/A"),
+                        safeText(subject.getSubjectName(), "N/A"),
+                        units,
+                        safeText(section.getSectionCode(), "N/A"),
+                        scheduleDisplay,
+                        slotsDisplay,
+                        offering.getId(),
+                        subject.getId()
                 });
         }
 
@@ -204,6 +333,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		txtBirthDate.setText(student.getBirthdate() != null ? student.getBirthdate().toString() : "");
 		txtStudentStatus.setText(student.getStudentStatus().toString());
 		txtYearLevel.setText(student.getYearLevel() != null ? student.getYearLevel().toString() : "");
+                txtCourse.setText("N/A");
 
 		Optional<Course> course = CourseService.getInstance().getCourseById(student.getCourseId());
 		course.ifPresent(c -> txtCourse.setText(c.getCourseName()));
@@ -211,11 +341,12 @@ public class StudentDashboard extends javax.swing.JFrame {
 		List<Enrollment> enrollments = EnrollmentService.getInstance().getEnrollmentsByStudent(student.getStudentId());
 		if (enrollments != null && !enrollments.isEmpty()) {
                         Enrollment latest = enrollments.get(0);
-			txtEnrollmentStatus.setText(latest.getStatus().toString());
-			txtTotalUnits.setText(latest.getTotalUnits() != null ? latest.getTotalUnits().toString() : "0");
+                        txtEnrollmentStatus.setText(safeText(latest.getStatus() == null ? null : latest.getStatus().name(), "NOT ENROLLED"));
+                        txtTotalUnits.setText(formatUnits(latest.getTotalUnits() == null ? 0.0f : latest.getTotalUnits()));
 
 			List<EnrollmentDetail> details = EnrollmentDetailService.getInstance().getEnrollmentDetailsByEnrollment(latest.getId());
-			txtTotalSubjects.setText(String.valueOf(details.size()));
+                        long selectedCount = details.stream().filter(detail -> detail.getStatus() == EnrollmentDetailStatus.SELECTED).count();
+                        txtTotalSubjects.setText(String.valueOf(selectedCount));
 
                         String sectionCode = "None";
                         for (EnrollmentDetail detail : details) {
@@ -236,11 +367,13 @@ public class StudentDashboard extends javax.swing.JFrame {
                         }
 
                         txtSections.setText(sectionCode);
+                        updateEnrollmentStatusPresentation(latest);
 		} else {
 			txtEnrollmentStatus.setText("NOT ENROLLED");
-			txtTotalUnits.setText("0");
+                        txtTotalUnits.setText(formatUnits(0.0f));
 			txtTotalSubjects.setText("0");
 			txtSections.setText("None");
+                        updateEnrollmentStatusPresentation(null);
 		}
 
 		txtStudentID.setEditable(false);
@@ -257,6 +390,61 @@ public class StudentDashboard extends javax.swing.JFrame {
 		txtEnrollmentStatus.setEditable(false);
 		txtSections.setEditable(false);
 	}
+
+        private void updateEnrollmentStatusPresentation(Enrollment enrollment) {
+                if (enrollment == null || enrollment.getStatus() == null) {
+                        jLabel3.setText("Status: Not Enrolled");
+                        pBarRegistration.setValue(0);
+                        pBarRegistration.setStringPainted(true);
+                        pBarRegistration.setString("0%");
+                        return;
+                }
+
+                int progress = switch (enrollment.getStatus()) {
+                        case DRAFT -> 25;
+                        case SUBMITTED -> 50;
+                        case APPROVED -> 75;
+                        case ENROLLED -> 100;
+                        case CANCELLED -> 0;
+                };
+
+                jLabel3.setText("Status: " + enrollment.getStatus().name());
+                pBarRegistration.setValue(progress);
+                pBarRegistration.setStringPainted(true);
+                pBarRegistration.setString(progress + "%");
+        }
+
+        private int normalizeCapacity(Integer capacity) {
+                return capacity == null ? 0 : capacity;
+        }
+
+        private String safeText(String value, String fallback) {
+                if (value == null || value.trim().isEmpty()) {
+                        return fallback;
+                }
+
+                return value.trim();
+        }
+
+        private float parseUnitsCell(Object value) {
+                if (value instanceof Number number) {
+                        return number.floatValue();
+                }
+
+                if (value == null) {
+                        return 0.0f;
+                }
+
+                try {
+                        return Float.parseFloat(value.toString().trim());
+                } catch (NumberFormatException ex) {
+                        return 0.0f;
+                }
+        }
+
+        private String formatUnits(float units) {
+                return String.format("%.1f", units);
+        }
 
 	/**
 	 * This method is called from within the constructor to initialize the
@@ -306,6 +494,8 @@ public class StudentDashboard extends javax.swing.JFrame {
                 jLabel6 = new javax.swing.JLabel();
                 jLabel7 = new javax.swing.JLabel();
                 jLabel2 = new javax.swing.JLabel();
+                jLabel10 = new javax.swing.JLabel();
+                jLabel11 = new javax.swing.JLabel();
                 panelCourseRegistration = new javax.swing.JPanel();
                 jLabel13 = new javax.swing.JLabel();
                 txtSearch = new javax.swing.JTextField();
@@ -323,6 +513,7 @@ public class StudentDashboard extends javax.swing.JFrame {
                 btnSubmitSchedule = new javax.swing.JButton();
                 jScrollPane3 = new javax.swing.JScrollPane();
                 jList1 = new javax.swing.JList<>();
+                labelAnnouncement = new javax.swing.JLabel();
                 panelMySchedule = new javax.swing.JPanel();
                 jPanel9 = new javax.swing.JPanel();
                 jPanel10 = new javax.swing.JPanel();
@@ -469,7 +660,7 @@ public class StudentDashboard extends javax.swing.JFrame {
                                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                                                 .addGroup(panelAcademicOverviewLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                                                         .addGroup(panelAcademicOverviewLayout.createSequentialGroup()
-                                                                                .addGap(0, 0, Short.MAX_VALUE)
+                                                                                .addGap(0, 4, Short.MAX_VALUE)
                                                                                 .addComponent(txtMiddleName, javax.swing.GroupLayout.PREFERRED_SIZE, 334, javax.swing.GroupLayout.PREFERRED_SIZE))
                                                                         .addComponent(jLabel21, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -593,6 +784,8 @@ public class StudentDashboard extends javax.swing.JFrame {
 
                 panelEnrollmentProgress.setBorder(new com.group5.paul_esys.ui.RoundShadowBorder());
 
+                pBarRegistration.setToolTipText("");
+                pBarRegistration.setValue(50);
                 pBarRegistration.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
                 jLabel5.setText("Registration");
@@ -604,6 +797,10 @@ public class StudentDashboard extends javax.swing.JFrame {
                 jLabel2.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
                 jLabel2.setForeground(new java.awt.Color(0, 0, 102));
                 jLabel2.setText("Enrollment Progress");
+
+                jLabel10.setText("Draft");
+
+                jLabel11.setText("Submitted");
 
                 javax.swing.GroupLayout panelEnrollmentProgressLayout = new javax.swing.GroupLayout(panelEnrollmentProgress);
                 panelEnrollmentProgress.setLayout(panelEnrollmentProgressLayout);
@@ -618,9 +815,13 @@ public class StudentDashboard extends javax.swing.JFrame {
                                         .addComponent(pBarRegistration, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                         .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, panelEnrollmentProgressLayout.createSequentialGroup()
                                                 .addComponent(jLabel5)
+                                                .addGap(169, 169, 169)
+                                                .addComponent(jLabel10)
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addComponent(jLabel11)
+                                                .addGap(218, 218, 218)
                                                 .addComponent(jLabel6)
-                                                .addGap(438, 438, 438)
+                                                .addGap(214, 214, 214)
                                                 .addComponent(jLabel7)))
                                 .addContainerGap())
                 );
@@ -633,7 +834,9 @@ public class StudentDashboard extends javax.swing.JFrame {
                                 .addGroup(panelEnrollmentProgressLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                                         .addComponent(jLabel5)
                                         .addComponent(jLabel6)
-                                        .addComponent(jLabel7))
+                                        .addComponent(jLabel7)
+                                        .addComponent(jLabel10)
+                                        .addComponent(jLabel11))
                                 .addGap(4, 4, 4)
                                 .addComponent(pBarRegistration, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addContainerGap())
@@ -707,7 +910,7 @@ public class StudentDashboard extends javax.swing.JFrame {
                         .addGroup(jPanel2Layout.createSequentialGroup()
                                 .addContainerGap()
                                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 680, Short.MAX_VALUE)
+                                        .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 688, Short.MAX_VALUE)
                                         .addComponent(jLabel14, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                 .addContainerGap())
                 );
@@ -717,7 +920,7 @@ public class StudentDashboard extends javax.swing.JFrame {
                                 .addGap(13, 13, 13)
                                 .addComponent(jLabel14)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 534, Short.MAX_VALUE)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 543, Short.MAX_VALUE)
                                 .addContainerGap())
                 );
 
@@ -797,6 +1000,9 @@ public class StudentDashboard extends javax.swing.JFrame {
                                 .addGap(54, 54, 54))
                 );
 
+                labelAnnouncement.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+                labelAnnouncement.setForeground(new java.awt.Color(119, 0, 0));
+
                 javax.swing.GroupLayout panelCourseRegistrationLayout = new javax.swing.GroupLayout(panelCourseRegistration);
                 panelCourseRegistration.setLayout(panelCourseRegistrationLayout);
                 panelCourseRegistrationLayout.setHorizontalGroup(
@@ -804,23 +1010,28 @@ public class StudentDashboard extends javax.swing.JFrame {
                         .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
                                 .addContainerGap()
                                 .addGroup(panelCourseRegistrationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
+                                                .addGroup(panelCourseRegistrationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(jPanel2, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                        .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
+                                                                .addComponent(txtSearch)
+                                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                                .addComponent(btnSearchSubject, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                                         .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
                                                 .addComponent(jLabel13)
-                                                .addGap(0, 0, Short.MAX_VALUE))
-                                        .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
-                                                .addComponent(txtSearch)
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                                .addComponent(btnSearchSubject, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jPanel8, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                                                .addComponent(labelAnnouncement, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                                 .addContainerGap())
                 );
                 panelCourseRegistrationLayout.setVerticalGroup(
                         panelCourseRegistrationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                         .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
                                 .addContainerGap()
-                                .addComponent(jLabel13)
+                                .addGroup(panelCourseRegistrationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(jLabel13)
+                                        .addComponent(labelAnnouncement))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(panelCourseRegistrationLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                         .addGroup(panelCourseRegistrationLayout.createSequentialGroup()
@@ -945,25 +1156,41 @@ public class StudentDashboard extends javax.swing.JFrame {
         }//GEN-LAST:event_btnSearchSubjectActionPerformed
 
         private void btnSubmitScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSubmitScheduleActionPerformed
-		int[] selectedRows = tblSubjectCatalog.getSelectedRows();
-		if (selectedRows == null || selectedRows.length == 0) {
+                if (!hasActiveEnrollmentPeriod) {
+                        JOptionPane.showMessageDialog(
+                          this,
+                          "Enrollment is closed. You can preview offerings, but submission requires an active enrollment period.",
+                          "Enrollment Closed",
+                          JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                }
+
+                int[] selectedRows = tblSubjectCatalog.getSelectedRows();
+                if (selectedRows == null || selectedRows.length == 0) {
                         JOptionPane.showMessageDialog(this, "Please select offerings to enroll.", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
+                        return;
+                }
 
                 Optional<Long> activeEnrollmentPeriodId = EnrollmentPeriodService.getInstance()
                   .getCurrentEnrollmentPeriod()
-                  .map(period -> period.getId());
+                  .map(EnrollmentPeriod::getId);
                 if (activeEnrollmentPeriodId.isEmpty()) {
                         JOptionPane.showMessageDialog(this, "No active enrollment period.", "Error", JOptionPane.ERROR_MESSAGE);
                         return;
                 }
 
-		// Check capacity and schedule conflict
+                DefaultTableModel catalogModel = (DefaultTableModel) tblSubjectCatalog.getModel();
+
                 List<Schedule> selectedSchedules = new ArrayList<>();
-                List<Offering> selectedOfferings = new ArrayList<>();
-		for (int r : selectedRows) {
-                        Long offeringId = Long.parseLong(tblSubjectCatalog.getValueAt(r, 6).toString());
+                List<OfferingSelection> selectedOfferings = new ArrayList<>();
+                for (int selectedRow : selectedRows) {
+                        int modelRow = tblSubjectCatalog.convertRowIndexToModel(selectedRow);
+                        Long offeringId = parseLongCell(catalogModel.getValueAt(modelRow, CATALOG_COL_OFFERING_ID));
+                        if (offeringId == null) {
+                                JOptionPane.showMessageDialog(this, "Invalid offering selection.", "Error", JOptionPane.ERROR_MESSAGE);
+                                return;
+                        }
 
                         Optional<Offering> offeringOpt = OfferingService.getInstance().getOfferingById(offeringId);
                         if (offeringOpt.isEmpty()) {
@@ -975,116 +1202,127 @@ public class StudentDashboard extends javax.swing.JFrame {
                         Optional<Section> sectionOpt = SectionService.getInstance().getSectionById(offering.getSectionId());
                         String sectionLabel = sectionOpt.map(Section::getSectionCode).orElse("Section #" + offering.getSectionId());
 
-                        int capacity = offering.getCapacity() != null
-                          ? offering.getCapacity()
-                          : sectionOpt.map(Section::getCapacity).orElse(0);
+                        int capacity = normalizeCapacity(
+                          offering.getCapacity() != null ? offering.getCapacity() : sectionOpt.map(Section::getCapacity).orElse(0)
+                        );
                         long enrolledCount = EnrollmentDetailService.getInstance().countSelectedByOffering(offering.getId());
                         if (capacity > 0 && enrolledCount >= capacity) {
-                                JOptionPane.showMessageDialog(this, "Offering for " + sectionLabel + " is full! Capacity: " + capacity, "Capacity Conflict", JOptionPane.ERROR_MESSAGE);
+                                JOptionPane.showMessageDialog(
+                                  this,
+                                  "Offering for " + sectionLabel + " is full. Capacity: " + capacity,
+                                  "Capacity Conflict",
+                                  JOptionPane.ERROR_MESSAGE
+                                );
                                 return;
                         }
 
-                        List<Schedule> scheds = ScheduleService.getInstance().getSchedulesByOffering(offering.getId());
-			for (Schedule sNew : scheds) {
-                                if (sNew.getStartTime() == null || sNew.getEndTime() == null) {
+                        List<Schedule> schedules = ScheduleService.getInstance().getSchedulesByOffering(offering.getId());
+                        for (Schedule newSchedule : schedules) {
+                                if (newSchedule.getStartTime() == null || newSchedule.getEndTime() == null) {
                                         continue;
                                 }
 
-				for (Schedule sExisting : selectedSchedules) {
-                                        if (sExisting.getStartTime() == null || sExisting.getEndTime() == null) {
+                                for (Schedule existingSchedule : selectedSchedules) {
+                                        if (existingSchedule.getStartTime() == null || existingSchedule.getEndTime() == null) {
                                                 continue;
                                         }
 
-					if (sNew.getDay() == sExisting.getDay()) {
-						// Check overlap (Start1 < End2 and End1 > Start2)
-						long start1 = sNew.getStartTime().getTime();
-						long end1 = sNew.getEndTime().getTime();
-						long start2 = sExisting.getStartTime().getTime();
-						long end2 = sExisting.getEndTime().getTime();
-						if (start1 < end2 && end1 > start2) {
-                                                        JOptionPane.showMessageDialog(this, "Schedule conflict at " + sNew.getDay() + " for " + sectionLabel, "Schedule Conflict", JOptionPane.ERROR_MESSAGE);
-							return;
-						}
-					}
-				}
-			}
-			selectedSchedules.addAll(scheds);
-                        selectedOfferings.add(offering);
-		}
+                                        if (newSchedule.getDay() != existingSchedule.getDay()) {
+                                                continue;
+                                        }
 
-		Enrollment enrollment = new Enrollment();
-		enrollment.setStudentId(currentStudent.getStudentId());
-                enrollment.setEnrollmentPeriodId(activeEnrollmentPeriodId.get());
-		enrollment.setStatus(EnrollmentStatus.SUBMITTED);
-                enrollment.setMaxUnits(24.0f);
-		enrollment.setTotalUnits(0.0f);
-                enrollment.setSubmittedAt(new Date());
+                                        long start1 = newSchedule.getStartTime().getTime();
+                                        long end1 = newSchedule.getEndTime().getTime();
+                                        long start2 = existingSchedule.getStartTime().getTime();
+                                        long end2 = existingSchedule.getEndTime().getTime();
+                                        if (start1 < end2 && end1 > start2) {
+                                                JOptionPane.showMessageDialog(
+                                                  this,
+                                                  "Schedule conflict at " + newSchedule.getDay() + " for " + sectionLabel,
+                                                  "Schedule Conflict",
+                                                  JOptionPane.ERROR_MESSAGE
+                                                );
+                                                return;
+                                        }
+                                }
+                        }
 
-		boolean created = EnrollmentService.getInstance().createEnrollment(enrollment);
-		if (!created) {
-			JOptionPane.showMessageDialog(this, "Failed to submit enrollment.", "Error", JOptionPane.ERROR_MESSAGE);
-			return;
-		}
+                        selectedSchedules.addAll(schedules);
+                        float units = parseUnitsCell(catalogModel.getValueAt(modelRow, CATALOG_COL_UNITS));
+                        selectedOfferings.add(new OfferingSelection(offering, units));
+                }
 
-                List<Enrollment> studentEr = EnrollmentService.getInstance().getEnrollmentsByStudent(currentStudent.getStudentId());
-                if (studentEr.isEmpty()) {
-                        JOptionPane.showMessageDialog(this, "Enrollment was created but cannot be reloaded.", "Error", JOptionPane.ERROR_MESSAGE);
+                Enrollment activeEnrollment = resolveOrCreateEnrollment(activeEnrollmentPeriodId.get());
+                if (activeEnrollment == null) {
                         return;
                 }
 
-                Enrollment added = studentEr.get(0);
-		float sumUnits = 0.0f;
+                Map<Long, EnrollmentDetail> existingDetailsByOfferingId = new HashMap<>();
+                for (EnrollmentDetail detail : EnrollmentDetailService.getInstance().getEnrollmentDetailsByEnrollment(activeEnrollment.getId())) {
+                        existingDetailsByOfferingId.put(detail.getOfferingId(), detail);
+                }
 
-                for (int i = 0; i < selectedRows.length; i++) {
-                        int r = selectedRows[i];
-                        Offering offering = selectedOfferings.get(i);
-			float units = Float.parseFloat(tblSubjectCatalog.getValueAt(r, 2).toString());
+                for (OfferingSelection selection : selectedOfferings) {
+                        EnrollmentDetail existingDetail = existingDetailsByOfferingId.get(selection.offering.getId());
+                        boolean persisted;
 
-			EnrollmentDetail ed = new EnrollmentDetail();
-			ed.setEnrollmentId(added.getId());
-                        ed.setOfferingId(offering.getId());
-			ed.setUnits(units);
-			ed.setStatus(EnrollmentDetailStatus.SELECTED);
+                        if (existingDetail == null) {
+                                EnrollmentDetail detail = new EnrollmentDetail();
+                                detail.setEnrollmentId(activeEnrollment.getId());
+                                detail.setOfferingId(selection.offering.getId());
+                                detail.setUnits(selection.units);
+                                detail.setStatus(EnrollmentDetailStatus.SELECTED);
+                                persisted = EnrollmentDetailService.getInstance().createEnrollmentDetail(detail);
+                        } else {
+                                existingDetail.setUnits(selection.units);
+                                existingDetail.setStatus(EnrollmentDetailStatus.SELECTED);
+                                persisted = EnrollmentDetailService.getInstance().updateEnrollmentDetail(existingDetail);
+                        }
 
-                        if (!EnrollmentDetailService.getInstance().createEnrollmentDetail(ed)) {
-                                JOptionPane.showMessageDialog(this, "Failed to create enrollment detail.", "Error", JOptionPane.ERROR_MESSAGE);
+                        if (!persisted) {
+                                JOptionPane.showMessageDialog(this, "Failed to persist enrollment detail.", "Error", JOptionPane.ERROR_MESSAGE);
                                 return;
                         }
 
-                        if (offering.getSemesterSubjectId() != null) {
+                        if (selection.offering.getSemesterSubjectId() != null) {
                                 StudentEnrolledSubjectService.getInstance().upsertStatus(
                                   currentStudent.getStudentId(),
-                                  added.getId(),
-                                  offering.getId(),
-                                  offering.getSemesterSubjectId(),
+                                  activeEnrollment.getId(),
+                                  selection.offering.getId(),
+                                  selection.offering.getSemesterSubjectId(),
                                   StudentEnrolledSubjectStatus.ENROLLED
                                 );
                         }
-
-			sumUnits += units;
-		}
-
-                added.setTotalUnits(sumUnits);
-                if (added.getSubmittedAt() == null) {
-                        added.setSubmittedAt(new Date());
                 }
-		EnrollmentService.getInstance().updateEnrollment(added);
 
-		JOptionPane.showMessageDialog(this, "Enrollment submitted to Registrar successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
-		initStudentData(currentStudent);
-		loadMySchedule();
+                activeEnrollment.setStatus(EnrollmentStatus.SUBMITTED);
+                activeEnrollment.setMaxUnits(MAX_ENROLLMENT_UNITS);
+                activeEnrollment.setTotalUnits(sumSelectedUnits(activeEnrollment.getId()));
+                if (activeEnrollment.getSubmittedAt() == null) {
+                        activeEnrollment.setSubmittedAt(new Date());
+                }
+
+                if (!EnrollmentService.getInstance().updateEnrollment(activeEnrollment)) {
+                        JOptionPane.showMessageDialog(this, "Failed to update enrollment summary.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                }
+
+                JOptionPane.showMessageDialog(this, "Enrollment submitted successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+                reloadStudentDashboardData();
         }//GEN-LAST:event_btnSubmitScheduleActionPerformed
 
 	private void loadMySchedule() {
-		javax.swing.table.DefaultTableModel model = (javax.swing.table.DefaultTableModel) tableSchedules.getModel();
+                DefaultTableModel model = (DefaultTableModel) tableSchedules.getModel();
 		model.setRowCount(0);
 
                 List<Enrollment> studentEr = EnrollmentService.getInstance().getEnrollmentsByStudent(currentStudent.getStudentId());
 		if (studentEr == null || studentEr.isEmpty()) {
+                        updateEnrollmentStatusPresentation(null);
 			return;
 		}
 
                 Enrollment active = studentEr.get(0);
+                updateEnrollmentStatusPresentation(active);
                 List<EnrollmentDetail> details = EnrollmentDetailService.getInstance().getEnrollmentDetailsByEnrollment(active.getId());
 
 		for (EnrollmentDetail ed : details) {
@@ -1122,18 +1360,108 @@ public class StudentDashboard extends javax.swing.JFrame {
 			}
 
 			if (subject.isPresent() && section.isPresent()) {
+                                String scheduleValue = schedString.length() == 0
+                                  ? safeText(section.get().getSectionCode(), "N/A") + " | TBA"
+                                  : safeText(section.get().getSectionCode(), "N/A") + " | " + schedString.toString().trim();
+                                String roomValue = roomString.length() == 0 ? "TBA" : roomString.toString().trim();
+                                String facultyValue = facultyString.length() == 0 ? "TBA" : facultyString.toString().trim();
+                                float units = ed.getUnits() == null
+                                  ? (subject.get().getUnits() == null ? 0.0f : subject.get().getUnits())
+                                  : ed.getUnits();
+
 				model.addRow(new Object[]{
-					subject.get().getSubjectCode(),
-					subject.get().getSubjectName(),
-					section.get().getSectionCode(),
-					facultyString.toString().trim(),
-					schedString.toString().trim(),
-					roomString.toString().trim(),
-					String.valueOf(subject.get().getUnits())
+                                        safeText(subject.get().getSubjectCode(), "N/A"),
+                                        safeText(subject.get().getSubjectName(), "N/A"),
+                                        facultyValue,
+                                        scheduleValue,
+                                        roomValue,
+                                        formatUnits(units)
 				});
 			}
 		}
 	}
+
+        private Enrollment resolveOrCreateEnrollment(Long enrollmentPeriodId) {
+                List<Enrollment> studentEnrollments = EnrollmentService.getInstance().getEnrollmentsByStudent(currentStudent.getStudentId());
+                for (Enrollment enrollment : studentEnrollments) {
+                        if (!enrollmentPeriodId.equals(enrollment.getEnrollmentPeriodId())) {
+                                continue;
+                        }
+
+                        if (enrollment.getStatus() == EnrollmentStatus.APPROVED || enrollment.getStatus() == EnrollmentStatus.ENROLLED) {
+                                JOptionPane.showMessageDialog(
+                                  this,
+                                  "Your enrollment for the active period is already finalized.",
+                                  "Enrollment Locked",
+                                  JOptionPane.WARNING_MESSAGE
+                                );
+                                return null;
+                        }
+
+                        return enrollment;
+                }
+
+                Enrollment enrollment = new Enrollment();
+                enrollment.setStudentId(currentStudent.getStudentId());
+                enrollment.setEnrollmentPeriodId(enrollmentPeriodId);
+                enrollment.setStatus(EnrollmentStatus.SUBMITTED);
+                enrollment.setMaxUnits(MAX_ENROLLMENT_UNITS);
+                enrollment.setTotalUnits(0.0f);
+                enrollment.setSubmittedAt(new Date());
+
+                if (!EnrollmentService.getInstance().createEnrollment(enrollment)) {
+                        JOptionPane.showMessageDialog(this, "Failed to create enrollment.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return null;
+                }
+
+                List<Enrollment> reloadedEnrollments = EnrollmentService.getInstance().getEnrollmentsByStudent(currentStudent.getStudentId());
+                for (Enrollment reloaded : reloadedEnrollments) {
+                        if (enrollmentPeriodId.equals(reloaded.getEnrollmentPeriodId())) {
+                                return reloaded;
+                        }
+                }
+
+                JOptionPane.showMessageDialog(this, "Enrollment was created but could not be reloaded.", "Error", JOptionPane.ERROR_MESSAGE);
+                return null;
+        }
+
+        private float sumSelectedUnits(Long enrollmentId) {
+                float total = 0.0f;
+                List<EnrollmentDetail> details = EnrollmentDetailService.getInstance().getEnrollmentDetailsByEnrollment(enrollmentId);
+                for (EnrollmentDetail detail : details) {
+                        if (detail.getStatus() == EnrollmentDetailStatus.SELECTED) {
+                                total += detail.getUnits() == null ? 0.0f : detail.getUnits();
+                        }
+                }
+
+                return total;
+        }
+
+        private Long parseLongCell(Object value) {
+                if (value instanceof Number number) {
+                        return number.longValue();
+                }
+
+                if (value == null) {
+                        return null;
+                }
+
+                try {
+                        return Long.parseLong(value.toString().trim());
+                } catch (NumberFormatException ex) {
+                        return null;
+                }
+        }
+
+        private static final class OfferingSelection {
+                private final Offering offering;
+                private final float units;
+
+                private OfferingSelection(Offering offering, float units) {
+                        this.offering = offering;
+                        this.units = units;
+                }
+        }
 
 	/**
 	 * @param args the command line arguments
@@ -1151,6 +1479,8 @@ public class StudentDashboard extends javax.swing.JFrame {
         private javax.swing.JButton jButton4;
         private javax.swing.JButton jButton5;
         private javax.swing.JLabel jLabel1;
+        private javax.swing.JLabel jLabel10;
+        private javax.swing.JLabel jLabel11;
         private javax.swing.JLabel jLabel12;
         private javax.swing.JLabel jLabel13;
         private javax.swing.JLabel jLabel14;
@@ -1188,6 +1518,7 @@ public class StudentDashboard extends javax.swing.JFrame {
         private javax.swing.JScrollPane jScrollPane3;
         private javax.swing.JSeparator jSeparator1;
         private javax.swing.JSeparator jSeparator2;
+        private javax.swing.JLabel labelAnnouncement;
         private javax.swing.JProgressBar pBarRegistration;
         private javax.swing.JPanel panelAcademicOverview;
         private javax.swing.JPanel panelCourseRegistration;

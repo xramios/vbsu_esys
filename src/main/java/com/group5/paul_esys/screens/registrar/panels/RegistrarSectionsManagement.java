@@ -13,10 +13,12 @@ import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.swing.JComboBox;
@@ -53,6 +55,7 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
         );
 
         private final SectionService sectionService = SectionService.getInstance();
+        private final javax.swing.Timer autoRefreshTimer = new javax.swing.Timer(4000, evt -> refreshSectionsIfChanged());
 
         private final JPopupMenu popMenu = new JPopupMenu();
         private final JMenuItem menuItemUpdate = new JMenuItem("Update Section");
@@ -61,6 +64,7 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
         private List<Section> sections = new ArrayList<>();
         private List<Section> filteredSections = new ArrayList<>();
         private Map<Long, Integer> enrolledCountBySectionId = new HashMap<>();
+        private long sectionsFingerprint = Long.MIN_VALUE;
 
 	/**
 	 * Creates new form RegistrarSectionsManagement
@@ -78,8 +82,41 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                 configurePopupMenu();
                 registerFilterListeners();
                 registerTableInteractionListeners();
+                configureAutoRefresh();
 
                 initializeSections();
+        }
+
+        @Override
+        public void addNotify() {
+                super.addNotify();
+                startAutoRefresh();
+        }
+
+        @Override
+        public void removeNotify() {
+                stopAutoRefresh();
+                super.removeNotify();
+        }
+
+        private void configureAutoRefresh() {
+                autoRefreshTimer.setRepeats(true);
+                autoRefreshTimer.setCoalesce(true);
+                autoRefreshTimer.setInitialDelay(4000);
+        }
+
+        private void startAutoRefresh() {
+                if (!autoRefreshTimer.isRunning()) {
+                        autoRefreshTimer.start();
+                }
+
+                refreshSectionsIfChanged();
+        }
+
+        private void stopAutoRefresh() {
+                if (autoRefreshTimer.isRunning()) {
+                        autoRefreshTimer.stop();
+                }
         }
 
         private void configureTableModel() {
@@ -166,10 +203,57 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
         }
 
         private void initializeSections() {
-                sections = sectionService.getAllSections();
-                enrolledCountBySectionId = sectionService.getSelectedEnrollmentCountBySectionId();
+                List<Section> latestSections = sectionService.getAllSections();
+                Map<Long, Integer> latestEnrolledCount = sectionService.getSelectedEnrollmentCountBySectionId();
+
+                applySectionSnapshot(latestSections, latestEnrolledCount, true);
+        }
+
+        private void refreshSectionsIfChanged() {
+                List<Section> latestSections = sectionService.getAllSections();
+                Map<Long, Integer> latestEnrolledCount = sectionService.getSelectedEnrollmentCountBySectionId();
+
+                applySectionSnapshot(latestSections, latestEnrolledCount, false);
+        }
+
+        private void applySectionSnapshot(
+                List<Section> latestSections,
+                Map<Long, Integer> latestEnrolledCount,
+                boolean forceRefresh
+        ) {
+                long latestFingerprint = computeSectionsFingerprint(latestSections, latestEnrolledCount);
+                if (!forceRefresh && latestFingerprint == sectionsFingerprint) {
+                        return;
+                }
+
+                sections = latestSections;
+                enrolledCountBySectionId = latestEnrolledCount;
+                sectionsFingerprint = latestFingerprint;
+
                 reloadStatusFilterOptions();
                 applyFilters();
+        }
+
+        private long computeSectionsFingerprint(List<Section> sectionsData, Map<Long, Integer> enrollmentMap) {
+                int hash = 1;
+
+                for (Section section : sectionsData) {
+                        hash = 31 * hash + Objects.hash(
+                                section.getId(),
+                                safeText(section.getSectionCode(), ""),
+                                safeText(section.getSectionName(), ""),
+                                normalizeCapacity(section.getCapacity()),
+                                normalizeStatus(section.getStatus())
+                        );
+                }
+
+                List<Long> sectionIds = new ArrayList<>(enrollmentMap.keySet());
+                Collections.sort(sectionIds);
+                for (Long sectionId : sectionIds) {
+                        hash = 31 * hash + Objects.hash(sectionId, enrollmentMap.getOrDefault(sectionId, 0));
+                }
+
+                return hash;
         }
 
         private void reloadStatusFilterOptions() {
@@ -622,14 +706,14 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                                 "Section Name", "Code", "Capacity", "Enrolled", "Status"
                         }
                 ) {
-                        Class[] types = new Class [] {
+                        Class<?>[] types = new Class<?>[] {
                                 java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
                         };
                         boolean[] canEdit = new boolean [] {
                                 true, false, true, false, false
                         };
 
-                        public Class getColumnClass(int columnIndex) {
+                        public Class<?> getColumnClass(int columnIndex) {
                                 return types [columnIndex];
                         }
 
