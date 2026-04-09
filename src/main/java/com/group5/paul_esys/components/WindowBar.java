@@ -55,6 +55,7 @@ public class WindowBar extends javax.swing.JPanel {
                 btnClose = new javax.swing.JLabel();
 
                 setBackground(new java.awt.Color(119, 0, 0));
+                setMaximumSize(new java.awt.Dimension(65534, 38));
                 setPreferredSize(new java.awt.Dimension(430, 36));
                 setLayout(new javax.swing.BoxLayout(this, javax.swing.BoxLayout.LINE_AXIS));
 
