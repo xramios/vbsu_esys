@@ -103,8 +103,12 @@ public class EnrollmentService {
       ps.setFloat(4, enrollment.getMaxUnits());
       ps.setFloat(5, enrollment.getTotalUnits());
       ps.setTimestamp(6, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
-      
-      return ps.executeUpdate() > 0;
+
+      boolean created = ps.executeUpdate() > 0;
+      if (created) {
+        StudentSemesterProgressService.getInstance().syncStudentProgress(enrollment.getStudentId());
+      }
+      return created;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;
@@ -123,8 +127,12 @@ public class EnrollmentService {
       ps.setFloat(5, enrollment.getTotalUnits());
       ps.setTimestamp(6, new java.sql.Timestamp(enrollment.getSubmittedAt().getTime()));
       ps.setLong(7, enrollment.getId());
-      
-      return ps.executeUpdate() > 0;
+
+      boolean updated = ps.executeUpdate() > 0;
+      if (updated) {
+        StudentSemesterProgressService.getInstance().syncStudentProgress(enrollment.getStudentId());
+      }
+      return updated;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;
@@ -132,14 +140,20 @@ public class EnrollmentService {
   }
 
   public boolean updateEnrollmentStatus(Long id, EnrollmentStatus status) {
+    Optional<String> studentId = getStudentIdByEnrollmentId(id);
+
     try (Connection conn = ConnectionService.getConnection();
       PreparedStatement ps = conn.prepareStatement(
         "UPDATE enrollments SET status = ? WHERE id = ?"
       )) {
       ps.setString(1, status.name());
       ps.setLong(2, id);
-      
-      return ps.executeUpdate() > 0;
+
+      boolean updated = ps.executeUpdate() > 0;
+      if (updated && studentId.isPresent()) {
+        StudentSemesterProgressService.getInstance().syncStudentProgress(studentId.get());
+      }
+      return updated;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;
@@ -147,14 +161,40 @@ public class EnrollmentService {
   }
 
   public boolean deleteEnrollment(Long id) {
+    Optional<String> studentId = getStudentIdByEnrollmentId(id);
+
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement("DELETE FROM enrollments WHERE id = ?")) {
       ps.setLong(1, id);
-      
-      return ps.executeUpdate() > 0;
+
+      boolean deleted = ps.executeUpdate() > 0;
+      if (deleted && studentId.isPresent()) {
+        StudentSemesterProgressService.getInstance().syncStudentProgress(studentId.get());
+      }
+      return deleted;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;
     }
+  }
+
+  private Optional<String> getStudentIdByEnrollmentId(Long enrollmentId) {
+    String sql = "SELECT student_id FROM enrollments WHERE id = ?";
+
+    try (
+      Connection conn = ConnectionService.getConnection();
+      PreparedStatement ps = conn.prepareStatement(sql)
+    ) {
+      ps.setLong(1, enrollmentId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return Optional.ofNullable(rs.getString("student_id"));
+        }
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+
+    return Optional.empty();
   }
 }
