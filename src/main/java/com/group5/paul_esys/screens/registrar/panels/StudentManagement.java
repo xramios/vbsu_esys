@@ -186,6 +186,7 @@ public final class StudentManagement extends javax.swing.JPanel {
                 jLabel15 = new javax.swing.JLabel();
                 jLabel16 = new javax.swing.JLabel();
 
+                setPreferredSize(new java.awt.Dimension(1181, 684));
                 setLayout(new java.awt.BorderLayout());
 
                 panelStudents.setBackground(new java.awt.Color(255, 255, 255));

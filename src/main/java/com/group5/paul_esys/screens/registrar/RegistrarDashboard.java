@@ -3,6 +3,8 @@ package com.group5.paul_esys.screens.registrar;
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
 import com.group5.paul_esys.modules.registrar.model.Registrar;
 import com.group5.paul_esys.modules.users.services.UserSession;
+import com.group5.paul_esys.screens.registrar.panels.RegistrarCurriculumManagement;
+import com.group5.paul_esys.screens.registrar.panels.RegistrarRoomsManagementPanel;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarSubjectManagement;
 import com.group5.paul_esys.screens.registrar.panels.StudentManagement;
 
@@ -40,7 +42,9 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
 	// Add nung mga tabs
 	tabbedPaneStudents.add("Dashboard", new com.group5.paul_esys.screens.registrar.panels.RegistrarDashboard());
 	tabbedPaneStudents.add("Students", new StudentManagement());
-    tabbedPaneStudents.add("Subjects", new RegistrarSubjectManagement());
+    	tabbedPaneStudents.add("Subjects", new RegistrarSubjectManagement());
+	tabbedPaneStudents.add("Curriculums", new RegistrarCurriculumManagement());
+	tabbedPaneStudents.add("Rooms", new RegistrarRoomsManagementPanel());
     }
 
     /**
