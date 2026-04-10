@@ -7,42 +7,21 @@ import com.group5.paul_esys.modules.registrar.model.ScheduleSaveResult;
 import com.group5.paul_esys.modules.registrar.model.ScheduleUpsertRequest;
 import com.group5.paul_esys.modules.registrar.services.RegistrarScheduleManagementService;
 import com.group5.paul_esys.screens.registrar.forms.ScheduleEntryDialog;
-import com.group5.paul_esys.ui.PanelRoundBorder;
-
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.FlowLayout;
 import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ItemEvent;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import javax.swing.Box;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
 import javax.swing.JTable;
-import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 
@@ -53,224 +32,16 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
   private final RegistrarScheduleManagementService scheduleManagementService =
       RegistrarScheduleManagementService.getInstance();
 
-  private final JTextField txtSearch = new JTextField();
-  private final JComboBox<String> cbxDay = new JComboBox<>();
-  private final JComboBox<String> cbxEnrollmentPeriod = new JComboBox<>();
-  private final JButton btnNewSchedule = new JButton("New Schedule");
-  private final JButton btnEditSchedule = new JButton("Edit Schedule");
-  private final JButton btnDeleteSchedule = new JButton("Delete Schedule");
-  private final JButton btnRefresh = new JButton("Refresh");
-  private final JButton btnClearFilter = new JButton("Clear Filter");
-
-  private final JLabel lblTableSummary = new JLabel("Showing 0 of 0 schedules");
-  private final JPanel panelConflictWarning = new JPanel(new BorderLayout());
-  private final JLabel lblConflictWarning = new JLabel("No conflict detected.");
-
-  private final JLabel lblValueSection = new JLabel("N/A");
-  private final JLabel lblValueSubject = new JLabel("N/A");
-  private final JLabel lblValuePeriod = new JLabel("N/A");
-  private final JLabel lblValueDay = new JLabel("N/A");
-  private final JLabel lblValueTime = new JLabel("N/A");
-  private final JLabel lblValueRoom = new JLabel("N/A");
-  private final JLabel lblValueFaculty = new JLabel("N/A");
-  private final JLabel lblValueConflict = new JLabel("NONE");
-
-  private final JPopupMenu popupMenu = new JPopupMenu();
-  private final JMenuItem menuItemEdit = new JMenuItem("Edit Schedule");
-  private final JMenuItem menuItemDelete = new JMenuItem("Delete Schedule");
-
   private final Map<String, Long> enrollmentPeriodIdByLabel = new LinkedHashMap<>();
 
   private final List<ScheduleManagementRow> scheduleRows = new ArrayList<>();
   private final List<ScheduleManagementRow> filteredScheduleRows = new ArrayList<>();
 
   private DefaultTableModel tableModel;
-  private JTable tableSchedules;
 
   public RegistrarSchedulesManagement() {
     initComponents();
-    buildRuntimeUi();
     initializeSchedulePanel();
-  }
-
-  private void buildRuntimeUi() {
-    jLabel2.setText("Manage class schedules by offering, room, faculty, and meeting time.");
-
-    jPanel1.removeAll();
-    jPanel1.setLayout(new BorderLayout(0, 10));
-
-    JPanel filterPanel = buildFilterPanel();
-    JSplitPane splitPane = buildMainSplitPane();
-
-    lblTableSummary.setFont(new java.awt.Font("Poppins", 0, 12));
-    lblTableSummary.setForeground(new Color(95, 95, 95));
-
-    jPanel1.add(filterPanel, BorderLayout.NORTH);
-    jPanel1.add(splitPane, BorderLayout.CENTER);
-    jPanel1.add(lblTableSummary, BorderLayout.SOUTH);
-
-    jPanel1.revalidate();
-    jPanel1.repaint();
-  }
-
-  private JPanel buildFilterPanel() {
-    JPanel panel = new JPanel(new GridBagLayout());
-    panel.setOpaque(false);
-
-    JLabel lblSearch = new JLabel("Search");
-    JLabel lblDay = new JLabel("Day");
-    JLabel lblPeriod = new JLabel("Enrollment Period");
-
-    txtSearch.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
-    txtSearch.setFont(new java.awt.Font("Poppins", 0, 12));
-
-    cbxDay.setFont(new java.awt.Font("Poppins", 0, 12));
-    cbxEnrollmentPeriod.setFont(new java.awt.Font("Poppins", 0, 12));
-
-    btnNewSchedule.setBackground(new Color(119, 0, 0));
-    btnNewSchedule.setForeground(Color.WHITE);
-    btnEditSchedule.setBackground(new Color(119, 0, 0));
-    btnEditSchedule.setForeground(Color.WHITE);
-    btnDeleteSchedule.setBackground(new Color(119, 0, 0));
-    btnDeleteSchedule.setForeground(Color.WHITE);
-    btnRefresh.setBackground(new Color(119, 0, 0));
-    btnRefresh.setForeground(Color.WHITE);
-    btnClearFilter.setBackground(new Color(245, 245, 245));
-
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.insets = new Insets(0, 0, 0, 6);
-    gbc.anchor = GridBagConstraints.WEST;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    gbc.weightx = 0;
-    panel.add(lblSearch, gbc);
-
-    gbc.gridx = 1;
-    gbc.weightx = 0.35;
-    panel.add(txtSearch, gbc);
-
-    gbc.gridx = 2;
-    gbc.weightx = 0;
-    panel.add(lblDay, gbc);
-
-    gbc.gridx = 3;
-    gbc.weightx = 0.1;
-    panel.add(cbxDay, gbc);
-
-    gbc.gridx = 4;
-    gbc.weightx = 0;
-    panel.add(lblPeriod, gbc);
-
-    gbc.gridx = 5;
-    gbc.weightx = 0.35;
-    panel.add(cbxEnrollmentPeriod, gbc);
-
-    JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-    actionsPanel.setOpaque(false);
-    actionsPanel.add(btnClearFilter);
-    actionsPanel.add(btnRefresh);
-    actionsPanel.add(btnNewSchedule);
-    actionsPanel.add(btnEditSchedule);
-    actionsPanel.add(btnDeleteSchedule);
-
-    gbc.gridx = 6;
-    gbc.weightx = 0.2;
-    panel.add(actionsPanel, gbc);
-
-    return panel;
-  }
-
-  private JSplitPane buildMainSplitPane() {
-    configureScheduleTableComponent();
-
-    JScrollPane scrollPane = new JScrollPane(tableSchedules);
-    scrollPane.setBorder(new PanelRoundBorder());
-
-    JPanel leftPanel = new JPanel(new BorderLayout(0, 6));
-    leftPanel.setOpaque(false);
-    JLabel lblListTitle = new JLabel("Schedule List");
-    lblListTitle.setFont(new java.awt.Font("Poppins", 0, 16));
-    leftPanel.add(lblListTitle, BorderLayout.NORTH);
-    leftPanel.add(scrollPane, BorderLayout.CENTER);
-
-    JPanel summaryPanel = buildSummaryPanel();
-
-    JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, summaryPanel);
-    splitPane.setResizeWeight(0.75);
-    splitPane.setBorder(null);
-
-    return splitPane;
-  }
-
-  private JPanel buildSummaryPanel() {
-    JPanel panel = new JPanel(new GridBagLayout());
-    panel.setBackground(Color.WHITE);
-    panel.setBorder(new PanelRoundBorder());
-
-    JLabel lblSummaryTitle = new JLabel("Selected Schedule Summary");
-    lblSummaryTitle.setFont(new java.awt.Font("Poppins", 0, 16));
-
-    panelConflictWarning.setBackground(new Color(255, 244, 228));
-    panelConflictWarning.setBorder(javax.swing.BorderFactory.createLineBorder(new Color(255, 212, 168)));
-    lblConflictWarning.setFont(new java.awt.Font("Poppins", 0, 12));
-    lblConflictWarning.setForeground(new Color(140, 70, 0));
-    panelConflictWarning.add(lblConflictWarning, BorderLayout.CENTER);
-    panelConflictWarning.setVisible(false);
-
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.insets = new Insets(8, 10, 4, 10);
-    gbc.anchor = GridBagConstraints.NORTHWEST;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    gbc.weightx = 1.0;
-
-    gbc.gridx = 0;
-    gbc.gridy = 0;
-    panel.add(lblSummaryTitle, gbc);
-
-    int row = 1;
-    addSummaryRow(panel, row++, "Section", lblValueSection);
-    addSummaryRow(panel, row++, "Subject", lblValueSubject);
-    addSummaryRow(panel, row++, "Enrollment Period", lblValuePeriod);
-    addSummaryRow(panel, row++, "Day", lblValueDay);
-    addSummaryRow(panel, row++, "Time", lblValueTime);
-    addSummaryRow(panel, row++, "Room", lblValueRoom);
-    addSummaryRow(panel, row++, "Faculty", lblValueFaculty);
-    addSummaryRow(panel, row++, "Conflict", lblValueConflict);
-
-    gbc.gridx = 0;
-    gbc.gridy = row;
-    gbc.weighty = 1.0;
-    gbc.fill = GridBagConstraints.BOTH;
-    panel.add(Box.createGlue(), gbc);
-
-    gbc.gridy = row + 1;
-    gbc.weighty = 0;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    panel.add(panelConflictWarning, gbc);
-
-    return panel;
-  }
-
-  private void addSummaryRow(JPanel panel, int row, String labelText, JLabel valueLabel) {
-    JLabel label = new JLabel(labelText);
-    label.setFont(new java.awt.Font("Poppins", 0, 12));
-    valueLabel.setFont(new java.awt.Font("Poppins", 0, 12));
-
-    GridBagConstraints gbc = new GridBagConstraints();
-    gbc.gridy = row;
-    gbc.insets = new Insets(2, 10, 2, 10);
-    gbc.anchor = GridBagConstraints.WEST;
-
-    gbc.gridx = 0;
-    gbc.weightx = 0;
-    panel.add(label, gbc);
-
-    gbc.gridx = 1;
-    gbc.weightx = 1;
-    gbc.fill = GridBagConstraints.HORIZONTAL;
-    panel.add(valueLabel, gbc);
   }
 
   private void configureScheduleTableComponent() {
@@ -294,96 +65,39 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
       }
     };
 
-    tableSchedules = new JTable(tableModel);
+    tableSchedules.setModel(tableModel);
     tableSchedules.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     tableSchedules.setRowHeight(28);
     tableSchedules.setAutoCreateRowSorter(false);
   }
 
   private void initializeSchedulePanel() {
-    configurePopupMenu();
-    configureTableInteractionListeners();
-    configureFilterListeners();
-    configureButtonListeners();
+    configureScheduleTableComponent();
+    applyStaticComponentStyles();
     configureConflictRenderer();
 
     initializeDayFilterOptions();
     reloadSchedules();
   }
 
-  private void configurePopupMenu() {
-    menuItemEdit.addActionListener(evt -> openUpdateScheduleDialog());
-    menuItemDelete.addActionListener(evt -> deleteSelectedSchedule());
+  private void applyStaticComponentStyles() {
+    txtSearch.setFont(new java.awt.Font("Poppins", 0, 12));
+    cbxDay.setFont(new java.awt.Font("Poppins", 0, 12));
+    cbxEnrollmentPeriod.setFont(new java.awt.Font("Poppins", 0, 12));
 
-    popupMenu.add(menuItemEdit);
-    popupMenu.add(menuItemDelete);
-    tableSchedules.setComponentPopupMenu(popupMenu);
-  }
+    btnNewSchedule.setBackground(new Color(119, 0, 0));
+    btnNewSchedule.setForeground(Color.WHITE);
+    btnEditSchedule.setBackground(new Color(119, 0, 0));
+    btnEditSchedule.setForeground(Color.WHITE);
+    btnDeleteSchedule.setBackground(new Color(119, 0, 0));
+    btnDeleteSchedule.setForeground(Color.WHITE);
+    btnRefresh.setBackground(new Color(119, 0, 0));
+    btnRefresh.setForeground(Color.WHITE);
+    btnClearFilter.setBackground(new Color(245, 245, 245));
 
-  private void configureTableInteractionListeners() {
-    tableSchedules.getSelectionModel().addListSelectionListener(evt -> {
-      if (!evt.getValueIsAdjusting()) {
-        updateScheduleSummary();
-      }
-    });
-
-    tableSchedules.addMouseListener(new MouseAdapter() {
-      @Override
-      public void mousePressed(MouseEvent evt) {
-        selectRowFromPointer(evt);
-      }
-
-      @Override
-      public void mouseReleased(MouseEvent evt) {
-        selectRowFromPointer(evt);
-      }
-
-      @Override
-      public void mouseClicked(MouseEvent evt) {
-        if (SwingUtilities.isLeftMouseButton(evt) && evt.getClickCount() == 2) {
-          openUpdateScheduleDialog();
-        }
-      }
-    });
-  }
-
-  private void configureFilterListeners() {
-    txtSearch.getDocument().addDocumentListener(new DocumentListener() {
-      @Override
-      public void insertUpdate(DocumentEvent e) {
-        applyFilters();
-      }
-
-      @Override
-      public void removeUpdate(DocumentEvent e) {
-        applyFilters();
-      }
-
-      @Override
-      public void changedUpdate(DocumentEvent e) {
-        applyFilters();
-      }
-    });
-
-    cbxDay.addItemListener(evt -> {
-      if (evt.getStateChange() == ItemEvent.SELECTED) {
-        applyFilters();
-      }
-    });
-
-    cbxEnrollmentPeriod.addItemListener(evt -> {
-      if (evt.getStateChange() == ItemEvent.SELECTED) {
-        applyFilters();
-      }
-    });
-  }
-
-  private void configureButtonListeners() {
-    btnClearFilter.addActionListener(evt -> clearFilters());
-    btnRefresh.addActionListener(evt -> reloadSchedules());
-    btnNewSchedule.addActionListener(evt -> openCreateScheduleDialog());
-    btnEditSchedule.addActionListener(evt -> openUpdateScheduleDialog());
-    btnDeleteSchedule.addActionListener(evt -> deleteSelectedSchedule());
+    lblTableSummary.setFont(new java.awt.Font("Poppins", 0, 12));
+    lblConflictWarning.setFont(new java.awt.Font("Poppins", 0, 12));
+    panelConflictWarning.setVisible(false);
   }
 
   private void configureConflictRenderer() {
@@ -824,102 +538,491 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
     return null;
   }
 
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
+        // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+        private void initComponents() {
 
-    jLabel2 = new javax.swing.JLabel();
-    jLabel1 = new javax.swing.JLabel();
-    jPanel1 = new javax.swing.JPanel();
-    jLabel3 = new javax.swing.JLabel();
-    jScrollPane1 = new javax.swing.JScrollPane();
-    jTable1 = new javax.swing.JTable();
+                popMenuSchedules = new javax.swing.JPopupMenu();
+                menuItemEditSchedule = new javax.swing.JMenuItem();
+                menuItemDeleteSchedule = new javax.swing.JMenuItem();
+                jLabel2 = new javax.swing.JLabel();
+                jLabel1 = new javax.swing.JLabel();
+                jPanel1 = new javax.swing.JPanel();
+                panelFilters = new javax.swing.JPanel();
+                lblSearch = new javax.swing.JLabel();
+                txtSearch = new javax.swing.JTextField();
+                lblDayFilter = new javax.swing.JLabel();
+                cbxDay = new javax.swing.JComboBox<>();
+                lblEnrollmentPeriodFilter = new javax.swing.JLabel();
+                cbxEnrollmentPeriod = new javax.swing.JComboBox<>();
+                btnClearFilter = new javax.swing.JButton();
+                btnRefresh = new javax.swing.JButton();
+                btnNewSchedule = new javax.swing.JButton();
+                btnEditSchedule = new javax.swing.JButton();
+                btnDeleteSchedule = new javax.swing.JButton();
+                panelList = new javax.swing.JPanel();
+                jLabel3 = new javax.swing.JLabel();
+                scrollSchedules = new javax.swing.JScrollPane();
+                tableSchedules = new javax.swing.JTable();
+                panelSummary = new javax.swing.JPanel();
+                lblSummaryTitle = new javax.swing.JLabel();
+                summaryRows = new javax.swing.JPanel();
+                lblSection = new javax.swing.JLabel();
+                lblValueSection = new javax.swing.JLabel();
+                lblSubject = new javax.swing.JLabel();
+                lblValueSubject = new javax.swing.JLabel();
+                lblEnrollmentPeriod = new javax.swing.JLabel();
+                lblValuePeriod = new javax.swing.JLabel();
+                lblDay = new javax.swing.JLabel();
+                lblValueDay = new javax.swing.JLabel();
+                lblTime = new javax.swing.JLabel();
+                lblValueTime = new javax.swing.JLabel();
+                lblRoom = new javax.swing.JLabel();
+                lblValueRoom = new javax.swing.JLabel();
+                lblFaculty = new javax.swing.JLabel();
+                lblValueFaculty = new javax.swing.JLabel();
+                lblConflict = new javax.swing.JLabel();
+                lblValueConflict = new javax.swing.JLabel();
+                panelConflictWarning = new javax.swing.JPanel();
+                lblConflictWarning = new javax.swing.JLabel();
+                lblTableSummary = new javax.swing.JLabel();
 
-    setBackground(new java.awt.Color(255, 255, 255));
+                menuItemEditSchedule.setText("Edit Schedule");
+                menuItemEditSchedule.addActionListener(this::menuItemEditScheduleActionPerformed);
+                popMenuSchedules.add(menuItemEditSchedule);
 
-    jLabel2.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-    jLabel2.setForeground(new java.awt.Color(153, 153, 153));
-    jLabel2.setText("Manage Schedules");
+                menuItemDeleteSchedule.setText("Delete Schedule");
+                menuItemDeleteSchedule.addActionListener(this::menuItemDeleteScheduleActionPerformed);
+                popMenuSchedules.add(menuItemDeleteSchedule);
 
-    jLabel1.setFont(new java.awt.Font("Poppins", 0, 24)); // NOI18N
-    jLabel1.setText("Schedules Management");
+                setBackground(new java.awt.Color(255, 255, 255));
+                setPreferredSize(new java.awt.Dimension(1181, 684));
 
-    jPanel1.setBackground(new java.awt.Color(255, 255, 255));
-    jPanel1.setBorder(new com.group5.paul_esys.ui.PanelRoundBorder());
+                jLabel2.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+                jLabel2.setForeground(new java.awt.Color(153, 153, 153));
+                jLabel2.setText("Manage class schedules by offering, room, faculty, and meeting time.");
 
-    jLabel3.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
-    jLabel3.setText("Schedule List");
+                jLabel1.setFont(new java.awt.Font("Poppins", 0, 24)); // NOI18N
+                jLabel1.setText("Schedules Management");
 
-    jTable1.setModel(new javax.swing.table.DefaultTableModel(
-      new Object[][] {
-        {null, null, null, null},
-        {null, null, null, null},
-        {null, null, null, null},
-        {null, null, null, null}
-      },
-      new String[] {
-        "Title 1", "Title 2", "Title 3", "Title 4"
-      }
-    ));
-    jScrollPane1.setViewportView(jTable1);
+                jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+                jPanel1.setBorder(new com.group5.paul_esys.ui.PanelRoundBorder());
 
-    javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-    jPanel1.setLayout(jPanel1Layout);
-    jPanel1Layout.setHorizontalGroup(
-      jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-        .addGroup(jPanel1Layout.createSequentialGroup()
-          .addContainerGap()
-          .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane1)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-              .addComponent(jLabel3)
-              .addGap(0, 0, Short.MAX_VALUE)))
-          .addContainerGap())
-    );
-    jPanel1Layout.setVerticalGroup(
-      jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-        .addGroup(jPanel1Layout.createSequentialGroup()
-          .addContainerGap()
-          .addComponent(jLabel3)
-          .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-          .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 549, Short.MAX_VALUE)
-          .addContainerGap())
-    );
+                panelFilters.setOpaque(false);
 
-    javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
-    this.setLayout(layout);
-    layout.setHorizontalGroup(
-      layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-        .addGroup(layout.createSequentialGroup()
-          .addContainerGap()
-          .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-            .addGroup(layout.createSequentialGroup()
-              .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addComponent(jLabel1)
-                .addComponent(jLabel2))
-              .addGap(0, 868, Short.MAX_VALUE)))
-          .addContainerGap())
-    );
-    layout.setVerticalGroup(
-      layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-        .addGroup(layout.createSequentialGroup()
-          .addContainerGap()
-          .addComponent(jLabel1)
-          .addGap(6, 6, 6)
-          .addComponent(jLabel2)
-          .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-          .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-          .addContainerGap())
-    );
+                lblSearch.setText("Search");
+
+                txtSearch.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
+                txtSearch.setPreferredSize(new java.awt.Dimension(280, 34));
+                txtSearch.addKeyListener(new java.awt.event.KeyAdapter() {
+                        public void keyReleased(java.awt.event.KeyEvent evt) {
+                                txtSearchKeyReleased(evt);
+                        }
+                });
+
+                lblDayFilter.setText("Day");
+
+                cbxDay.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "ALL" }));
+                cbxDay.setPreferredSize(new java.awt.Dimension(110, 34));
+                cbxDay.addItemListener(this::cbxDayItemStateChanged);
+
+                lblEnrollmentPeriodFilter.setText("Enrollment Period");
+
+                cbxEnrollmentPeriod.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "ALL" }));
+                cbxEnrollmentPeriod.setPreferredSize(new java.awt.Dimension(250, 34));
+                cbxEnrollmentPeriod.addItemListener(this::cbxEnrollmentPeriodItemStateChanged);
+
+                btnClearFilter.setText("Clear Filter");
+                btnClearFilter.addActionListener(this::btnClearFilterActionPerformed);
+
+                btnRefresh.setText("Refresh");
+                btnRefresh.addActionListener(this::btnRefreshActionPerformed);
+
+                btnNewSchedule.setText("New Schedule");
+                btnNewSchedule.addActionListener(this::btnNewScheduleActionPerformed);
+
+                btnEditSchedule.setText("Edit Schedule");
+                btnEditSchedule.addActionListener(this::btnEditScheduleActionPerformed);
+
+                btnDeleteSchedule.setText("Delete Schedule");
+                btnDeleteSchedule.addActionListener(this::btnDeleteScheduleActionPerformed);
+
+                javax.swing.GroupLayout panelFiltersLayout = new javax.swing.GroupLayout(panelFilters);
+                panelFilters.setLayout(panelFiltersLayout);
+                panelFiltersLayout.setHorizontalGroup(
+                        panelFiltersLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelFiltersLayout.createSequentialGroup()
+                                .addComponent(lblSearch)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(txtSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(lblDayFilter)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(cbxDay, javax.swing.GroupLayout.PREFERRED_SIZE, 110, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(lblEnrollmentPeriodFilter)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(cbxEnrollmentPeriod, javax.swing.GroupLayout.PREFERRED_SIZE, 220, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnClearFilter)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnRefresh)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnNewSchedule)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnEditSchedule)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(btnDeleteSchedule)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                );
+                panelFiltersLayout.setVerticalGroup(
+                        panelFiltersLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelFiltersLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(lblSearch)
+                                .addComponent(txtSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(lblDayFilter)
+                                .addComponent(cbxDay, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(lblEnrollmentPeriodFilter)
+                                .addComponent(cbxEnrollmentPeriod, javax.swing.GroupLayout.PREFERRED_SIZE, 34, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(btnClearFilter)
+                                .addComponent(btnRefresh)
+                                .addComponent(btnNewSchedule)
+                                .addComponent(btnEditSchedule)
+                                .addComponent(btnDeleteSchedule))
+                );
+
+                panelList.setBorder(new com.group5.paul_esys.ui.PanelRoundBorder());
+                panelList.setOpaque(false);
+
+                jLabel3.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
+                jLabel3.setText("Schedule List");
+
+                tableSchedules.setModel(new javax.swing.table.DefaultTableModel(
+                        new Object [][] {
+                                {null, null, null, null, null, null, null, null, null},
+                                {null, null, null, null, null, null, null, null, null},
+                                {null, null, null, null, null, null, null, null, null},
+                                {null, null, null, null, null, null, null, null, null}
+                        },
+                        new String [] {
+                                "Subject Code", "Subject Name", "Section", "Day", "Time", "Room", "Faculty", "Enrollment Period", "Conflict"
+                        }
+                ) {
+                        Class[] types = new Class [] {
+                                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
+                        };
+                        boolean[] canEdit = new boolean [] {
+                                false, false, false, false, false, false, false, false, false
+                        };
+
+                        public Class getColumnClass(int columnIndex) {
+                                return types [columnIndex];
+                        }
+
+                        public boolean isCellEditable(int rowIndex, int columnIndex) {
+                                return canEdit [columnIndex];
+                        }
+                });
+                tableSchedules.setComponentPopupMenu(popMenuSchedules);
+                tableSchedules.addMouseListener(new java.awt.event.MouseAdapter() {
+                        public void mouseClicked(java.awt.event.MouseEvent evt) {
+                                tableSchedulesMouseClicked(evt);
+                        }
+                        public void mousePressed(java.awt.event.MouseEvent evt) {
+                                tableSchedulesMousePressed(evt);
+                        }
+                        public void mouseReleased(java.awt.event.MouseEvent evt) {
+                                tableSchedulesMouseReleased(evt);
+                        }
+                });
+                scrollSchedules.setViewportView(tableSchedules);
+
+                javax.swing.GroupLayout panelListLayout = new javax.swing.GroupLayout(panelList);
+                panelList.setLayout(panelListLayout);
+                panelListLayout.setHorizontalGroup(
+                        panelListLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jLabel3)
+                        .addComponent(scrollSchedules)
+                );
+                panelListLayout.setVerticalGroup(
+                        panelListLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelListLayout.createSequentialGroup()
+                                .addComponent(jLabel3)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(scrollSchedules, javax.swing.GroupLayout.DEFAULT_SIZE, 479, Short.MAX_VALUE))
+                );
+
+                panelSummary.setBackground(new java.awt.Color(255, 255, 255));
+                panelSummary.setBorder(new com.group5.paul_esys.ui.PanelRoundBorder());
+
+                lblSummaryTitle.setFont(new java.awt.Font("Poppins", 0, 16)); // NOI18N
+                lblSummaryTitle.setText("Selected Schedule Summary");
+
+                summaryRows.setOpaque(false);
+                summaryRows.setLayout(new java.awt.GridLayout(8, 2));
+
+                lblSection.setText("Section");
+                summaryRows.add(lblSection);
+
+                lblValueSection.setText("N/A");
+                summaryRows.add(lblValueSection);
+
+                lblSubject.setText("Subject");
+                summaryRows.add(lblSubject);
+
+                lblValueSubject.setText("N/A");
+                summaryRows.add(lblValueSubject);
+
+                lblEnrollmentPeriod.setText("Enrollment Period");
+                summaryRows.add(lblEnrollmentPeriod);
+
+                lblValuePeriod.setText("N/A");
+                summaryRows.add(lblValuePeriod);
+
+                lblDay.setText("Day");
+                summaryRows.add(lblDay);
+
+                lblValueDay.setText("N/A");
+                summaryRows.add(lblValueDay);
+
+                lblTime.setText("Time");
+                summaryRows.add(lblTime);
+
+                lblValueTime.setText("N/A");
+                summaryRows.add(lblValueTime);
+
+                lblRoom.setText("Room");
+                summaryRows.add(lblRoom);
+
+                lblValueRoom.setText("N/A");
+                summaryRows.add(lblValueRoom);
+
+                lblFaculty.setText("Faculty");
+                summaryRows.add(lblFaculty);
+
+                lblValueFaculty.setText("N/A");
+                summaryRows.add(lblValueFaculty);
+
+                lblConflict.setText("Conflict");
+                summaryRows.add(lblConflict);
+
+                lblValueConflict.setText("NONE");
+                summaryRows.add(lblValueConflict);
+
+                panelConflictWarning.setBackground(new java.awt.Color(255, 244, 228));
+                panelConflictWarning.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
+
+                lblConflictWarning.setForeground(new java.awt.Color(140, 70, 0));
+                lblConflictWarning.setText("No conflict detected.");
+
+                javax.swing.GroupLayout panelConflictWarningLayout = new javax.swing.GroupLayout(panelConflictWarning);
+                panelConflictWarning.setLayout(panelConflictWarningLayout);
+                panelConflictWarningLayout.setHorizontalGroup(
+                        panelConflictWarningLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelConflictWarningLayout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(lblConflictWarning, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap())
+                );
+                panelConflictWarningLayout.setVerticalGroup(
+                        panelConflictWarningLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelConflictWarningLayout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(lblConflictWarning)
+                                .addContainerGap())
+                );
+
+                javax.swing.GroupLayout panelSummaryLayout = new javax.swing.GroupLayout(panelSummary);
+                panelSummary.setLayout(panelSummaryLayout);
+                panelSummaryLayout.setHorizontalGroup(
+                        panelSummaryLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelSummaryLayout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(panelSummaryLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(lblSummaryTitle)
+                                        .addComponent(summaryRows, javax.swing.GroupLayout.DEFAULT_SIZE, 322, Short.MAX_VALUE)
+                                        .addComponent(panelConflictWarning, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addContainerGap())
+                );
+                panelSummaryLayout.setVerticalGroup(
+                        panelSummaryLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(panelSummaryLayout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(lblSummaryTitle)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(summaryRows, javax.swing.GroupLayout.PREFERRED_SIZE, 245, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(panelConflictWarning, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(0, 0, Short.MAX_VALUE))
+                );
+
+                lblTableSummary.setForeground(new java.awt.Color(95, 95, 95));
+                lblTableSummary.setText("Showing 0 of 0 schedules");
+
+                javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+                jPanel1.setLayout(jPanel1Layout);
+                jPanel1Layout.setHorizontalGroup(
+                        jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(panelFilters, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(lblTableSummary, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addComponent(panelList, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(panelSummary, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addContainerGap())
+                );
+                jPanel1Layout.setVerticalGroup(
+                        jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(panelFilters, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(panelList, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(panelSummary, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(lblTableSummary)
+                                .addContainerGap())
+                );
+
+                javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+                this.setLayout(layout);
+                layout.setHorizontalGroup(
+                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addGroup(layout.createSequentialGroup()
+                                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(jLabel1)
+                                                        .addComponent(jLabel2))
+                                                .addGap(0, 0, Short.MAX_VALUE)))
+                                .addContainerGap())
+                );
+                layout.setVerticalGroup(
+                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addContainerGap()
+                                .addComponent(jLabel1)
+                                .addGap(6, 6, 6)
+                                .addComponent(jLabel2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap())
+                );
+        }// </editor-fold>//GEN-END:initComponents
+
+  private void txtSearchKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSearchKeyReleased
+    applyFilters();
+  }//GEN-LAST:event_txtSearchKeyReleased
+
+  private void cbxDayItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_cbxDayItemStateChanged
+    if (evt.getStateChange() == ItemEvent.SELECTED) {
+      applyFilters();
     }
-    // </editor-fold>//GEN-END:initComponents
+  }//GEN-LAST:event_cbxDayItemStateChanged
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTable jTable1;
-    // End of variables declaration//GEN-END:variables
+  private void cbxEnrollmentPeriodItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_cbxEnrollmentPeriodItemStateChanged
+    if (evt.getStateChange() == ItemEvent.SELECTED) {
+      applyFilters();
+    }
+  }//GEN-LAST:event_cbxEnrollmentPeriodItemStateChanged
+
+  private void btnClearFilterActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnClearFilterActionPerformed
+    clearFilters();
+  }//GEN-LAST:event_btnClearFilterActionPerformed
+
+  private void btnRefreshActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRefreshActionPerformed
+    reloadSchedules();
+  }//GEN-LAST:event_btnRefreshActionPerformed
+
+  private void btnNewScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNewScheduleActionPerformed
+    openCreateScheduleDialog();
+  }//GEN-LAST:event_btnNewScheduleActionPerformed
+
+  private void btnEditScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEditScheduleActionPerformed
+    openUpdateScheduleDialog();
+  }//GEN-LAST:event_btnEditScheduleActionPerformed
+
+  private void btnDeleteScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnDeleteScheduleActionPerformed
+    deleteSelectedSchedule();
+  }//GEN-LAST:event_btnDeleteScheduleActionPerformed
+
+  private void menuItemEditScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemEditScheduleActionPerformed
+    openUpdateScheduleDialog();
+  }//GEN-LAST:event_menuItemEditScheduleActionPerformed
+
+  private void menuItemDeleteScheduleActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_menuItemDeleteScheduleActionPerformed
+    deleteSelectedSchedule();
+  }//GEN-LAST:event_menuItemDeleteScheduleActionPerformed
+
+  private void tableSchedulesMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableSchedulesMouseClicked
+    if (SwingUtilities.isLeftMouseButton(evt) && evt.getClickCount() == 2) {
+      openUpdateScheduleDialog();
+    }
+  }//GEN-LAST:event_tableSchedulesMouseClicked
+
+  private void tableSchedulesMousePressed(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableSchedulesMousePressed
+    selectRowFromPointer(evt);
+  }//GEN-LAST:event_tableSchedulesMousePressed
+
+  private void tableSchedulesMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_tableSchedulesMouseReleased
+    selectRowFromPointer(evt);
+  }//GEN-LAST:event_tableSchedulesMouseReleased
+
+  private void tableSchedulesSelectionValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_tableSchedulesSelectionValueChanged
+    if (!evt.getValueIsAdjusting()) {
+      updateScheduleSummary();
+    }
+  }//GEN-LAST:event_tableSchedulesSelectionValueChanged
+
+        // Variables declaration - do not modify//GEN-BEGIN:variables
+        private javax.swing.JButton btnClearFilter;
+        private javax.swing.JButton btnDeleteSchedule;
+        private javax.swing.JButton btnEditSchedule;
+        private javax.swing.JButton btnNewSchedule;
+        private javax.swing.JButton btnRefresh;
+        private javax.swing.JComboBox<String> cbxDay;
+        private javax.swing.JComboBox<String> cbxEnrollmentPeriod;
+        private javax.swing.JLabel jLabel1;
+        private javax.swing.JLabel jLabel2;
+        private javax.swing.JLabel jLabel3;
+        private javax.swing.JPanel jPanel1;
+        private javax.swing.JLabel lblConflict;
+        private javax.swing.JLabel lblConflictWarning;
+        private javax.swing.JLabel lblDay;
+        private javax.swing.JLabel lblDayFilter;
+        private javax.swing.JLabel lblEnrollmentPeriod;
+        private javax.swing.JLabel lblEnrollmentPeriodFilter;
+        private javax.swing.JLabel lblFaculty;
+        private javax.swing.JLabel lblRoom;
+        private javax.swing.JLabel lblSearch;
+        private javax.swing.JLabel lblSection;
+        private javax.swing.JLabel lblSubject;
+        private javax.swing.JLabel lblSummaryTitle;
+        private javax.swing.JLabel lblTableSummary;
+        private javax.swing.JLabel lblTime;
+        private javax.swing.JLabel lblValueConflict;
+        private javax.swing.JLabel lblValueDay;
+        private javax.swing.JLabel lblValueFaculty;
+        private javax.swing.JLabel lblValuePeriod;
+        private javax.swing.JLabel lblValueRoom;
+        private javax.swing.JLabel lblValueSection;
+        private javax.swing.JLabel lblValueSubject;
+        private javax.swing.JLabel lblValueTime;
+        private javax.swing.JMenuItem menuItemDeleteSchedule;
+        private javax.swing.JMenuItem menuItemEditSchedule;
+        private javax.swing.JPanel panelConflictWarning;
+        private javax.swing.JPanel panelFilters;
+        private javax.swing.JPanel panelList;
+        private javax.swing.JPanel panelSummary;
+        private javax.swing.JPopupMenu popMenuSchedules;
+        private javax.swing.JScrollPane scrollSchedules;
+        private javax.swing.JPanel summaryRows;
+        private javax.swing.JTable tableSchedules;
+        private javax.swing.JTextField txtSearch;
+        // End of variables declaration//GEN-END:variables
 }
