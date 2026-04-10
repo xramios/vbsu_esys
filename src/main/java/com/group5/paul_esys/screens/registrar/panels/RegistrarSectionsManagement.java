@@ -304,7 +304,14 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                         return true;
                 }
 
-                return normalizeStatus(section.getStatus()).equals(selectedStatus);
+                return resolveEffectiveStatus(section).equals(selectedStatus);
+        }
+
+        private String resolveEffectiveStatus(Section section) {
+                int capacity = normalizeCapacity(section.getCapacity());
+                int enrolledCount = enrolledCountBySectionId.getOrDefault(section.getId(), 0);
+
+                return deriveDisplayStatus(section, enrolledCount, capacity);
         }
 
         private void populateTable(List<Section> sectionsToDisplay) {
@@ -314,13 +321,14 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                 for (Section section : sectionsToDisplay) {
                         int capacity = normalizeCapacity(section.getCapacity());
                         int enrolledCount = enrolledCountBySectionId.getOrDefault(section.getId(), 0);
+                        String displayStatus = deriveDisplayStatus(section, enrolledCount, capacity);
 
                         model.addRow(new Object[]{
                                 safeText(section.getSectionName(), "N/A"),
                                 safeText(section.getSectionCode(), "N/A"),
                                 capacity,
                                 enrolledCount,
-                                deriveDisplayStatus(section, enrolledCount, capacity)
+                                displayStatus
                         });
                 }
         }
@@ -340,7 +348,7 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
         }
 
         private void openCreateSectionDialog() {
-                SectionForm form = new SectionForm(null, this::initializeSections);
+                SectionForm form = new SectionForm(null, this::refreshSections);
                 form.setVisible(true);
         }
 
@@ -356,8 +364,35 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                         return;
                 }
 
-                SectionForm form = new SectionForm(selectedSection, this::initializeSections);
+                Long selectedSectionId = selectedSection.getId();
+                SectionForm form = new SectionForm(selectedSection, () -> {
+                        refreshSections();
+                        selectSectionById(selectedSectionId);
+                });
                 form.setVisible(true);
+        }
+
+        private void refreshSections() {
+                initializeSections();
+                tableSections.revalidate();
+                tableSections.repaint();
+        }
+
+        private void selectSectionById(Long sectionId) {
+                if (sectionId == null) {
+                        return;
+                }
+
+                for (int row = 0; row < filteredSections.size(); row++) {
+                        Section section = filteredSections.get(row);
+                        if (sectionId.equals(section.getId())) {
+                                int viewRow = tableSections.convertRowIndexToView(row);
+                                if (viewRow >= 0) {
+                                        tableSections.setRowSelectionInterval(viewRow, viewRow);
+                                }
+                                return;
+                        }
+                }
         }
 
         private void deleteSelectedSection() {
@@ -468,20 +503,16 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
 
                 setBackground(new java.awt.Color(255, 255, 255));
                 setPreferredSize(new java.awt.Dimension(1181, 684));
-                setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
                 jLabel1.setFont(new java.awt.Font("Poppins", 0, 24)); // NOI18N
                 jLabel1.setText("Sections Management");
-                add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 6, -1, -1));
 
                 jLabel2.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
                 jLabel2.setForeground(new java.awt.Color(153, 153, 153));
                 jLabel2.setText("Manage academic sections and capabilities.");
-                add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 49, -1, -1));
 
                 jPanel1.setBackground(new java.awt.Color(255, 255, 255));
                 jPanel1.setBorder(new com.group5.paul_esys.ui.PanelRoundBorder());
-                jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
                 tableSections.setModel(new javax.swing.table.DefaultTableModel(
                         new Object [][] {
@@ -494,14 +525,14 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                                 "Section Name", "Code", "Capacity", "Enrolled", "Status"
                         }
                 ) {
-                        Class<?>[] types = new Class<?>[] {
+                        Class[] types = new Class [] {
                                 java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
                         };
                         boolean[] canEdit = new boolean [] {
                                 true, false, true, false, false
                         };
 
-                        public Class<?> getColumnClass(int columnIndex) {
+                        public Class getColumnClass(int columnIndex) {
                                 return types [columnIndex];
                         }
 
@@ -511,39 +542,98 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                 });
                 jScrollPane1.setViewportView(tableSections);
 
-                jPanel1.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(11, 52, 1150, 540));
-
                 jLabel3.setText("Search");
-                jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 20, -1, -1));
 
                 txtSearch.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
+                txtSearch.addActionListener(this::txtSearchActionPerformed);
                 txtSearch.addKeyListener(new java.awt.event.KeyAdapter() {
                         public void keyReleased(java.awt.event.KeyEvent evt) {
                                 txtSearchKeyReleased(evt);
                         }
                 });
-                jPanel1.add(txtSearch, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 10, 340, 36));
 
                 jLabel4.setText("Status");
-                jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 20, -1, -1));
 
                 cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "OPEN", "CLOSED", "WAITLIST", "DISSOLVED" }));
                 cbxStatus.addItemListener(this::cbxStatusItemStateChanged);
-                jPanel1.add(cbxStatus, new org.netbeans.lib.awtextra.AbsoluteConstraints(460, 10, 280, 36));
 
                 btnAddSection.setBackground(new java.awt.Color(119, 0, 0));
                 btnAddSection.setForeground(new java.awt.Color(255, 255, 255));
                 btnAddSection.setText("Add Section");
                 btnAddSection.addActionListener(this::btnAddSectionActionPerformed);
-                jPanel1.add(btnAddSection, new org.netbeans.lib.awtextra.AbsoluteConstraints(850, 10, 150, 36));
 
                 btnClearFilter.setBackground(new java.awt.Color(119, 0, 0));
                 btnClearFilter.setForeground(new java.awt.Color(255, 255, 255));
                 btnClearFilter.setText("Clear Filter");
                 btnClearFilter.addActionListener(this::btnClearFilterActionPerformed);
-                jPanel1.add(btnClearFilter, new org.netbeans.lib.awtextra.AbsoluteConstraints(1007, 10, 150, 36));
 
-                add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(6, 77, 1170, 600));
+                javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
+                jPanel1.setLayout(jPanel1Layout);
+                jPanel1Layout.setHorizontalGroup(
+                        jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(7, 7, 7)
+                                                .addComponent(jLabel3)
+                                                .addGap(12, 12, 12)
+                                                .addComponent(txtSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 340, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(jLabel4)
+                                                .addGap(6, 6, 6)
+                                                .addComponent(cbxStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 280, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 128, Short.MAX_VALUE)
+                                                .addComponent(btnAddSection, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                                .addComponent(btnClearFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(8, 8, 8)
+                                                .addComponent(jScrollPane1)))
+                                .addContainerGap())
+                );
+                jPanel1Layout.setVerticalGroup(
+                        jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                .addGap(7, 7, 7)
+                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(txtSearch, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                                .addComponent(btnAddSection, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                                .addComponent(btnClearFilter, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                        .addComponent(cbxStatus, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addGroup(jPanel1Layout.createSequentialGroup()
+                                                .addGap(10, 10, 10)
+                                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                                        .addComponent(jLabel3)
+                                                        .addComponent(jLabel4))))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 540, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                );
+
+                javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
+                this.setLayout(layout);
+                layout.setHorizontalGroup(
+                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                        .addComponent(jLabel1)
+                                        .addComponent(jLabel2)
+                                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addContainerGap())
+                );
+                layout.setVerticalGroup(
+                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addGap(6, 6, 6)
+                                .addComponent(jLabel1)
+                                .addGap(6, 6, 6)
+                                .addComponent(jLabel2)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                );
         }// </editor-fold>//GEN-END:initComponents
 
         private void btnAddSectionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddSectionActionPerformed
@@ -563,6 +653,10 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                         applyFilters();
                 }
         }//GEN-LAST:event_cbxStatusItemStateChanged
+
+        private void txtSearchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtSearchActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_txtSearchActionPerformed
 
 
         // Variables declaration - do not modify//GEN-BEGIN:variables
