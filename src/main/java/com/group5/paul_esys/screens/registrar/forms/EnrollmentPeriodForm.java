@@ -79,6 +79,11 @@ public class EnrollmentPeriodForm extends javax.swing.JFrame {
 
                 textAreaDescription.setColumns(20);
                 textAreaDescription.setRows(5);
+                textAreaDescription.addKeyListener(new java.awt.event.KeyAdapter() {
+                        public void keyReleased(java.awt.event.KeyEvent evt) {
+                                textAreaDescriptionKeyReleased(evt);
+                        }
+                });
                 jScrollPane1.setViewportView(textAreaDescription);
 
                 btnSave.setBackground(new java.awt.Color(119, 0, 0));
@@ -168,6 +173,10 @@ public class EnrollmentPeriodForm extends javax.swing.JFrame {
         private void btnCanelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCanelActionPerformed
 		dispose();
         }//GEN-LAST:event_btnCanelActionPerformed
+
+        private void textAreaDescriptionKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_textAreaDescriptionKeyReleased
+                // TODO add your handling code here:
+        }//GEN-LAST:event_textAreaDescriptionKeyReleased
 
 	/**
 	 * @param args the command line arguments

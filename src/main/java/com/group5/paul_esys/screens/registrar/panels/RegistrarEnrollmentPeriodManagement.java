@@ -26,7 +26,7 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
         // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
         private void initComponents() {
 
-                jPopupMenu1 = new javax.swing.JPopupMenu();
+                popMenu = new javax.swing.JPopupMenu();
                 menuItemDelete = new javax.swing.JMenuItem();
                 menuItemUpdate = new javax.swing.JMenuItem();
                 jLabel1 = new javax.swing.JLabel();
@@ -42,11 +42,11 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
 
                 menuItemDelete.setText("jMenuItem1");
                 menuItemDelete.addActionListener(this::menuItemDeleteActionPerformed);
-                jPopupMenu1.add(menuItemDelete);
+                popMenu.add(menuItemDelete);
 
                 menuItemUpdate.setText("jMenuItem2");
                 menuItemUpdate.addActionListener(this::menuItemUpdateActionPerformed);
-                jPopupMenu1.add(menuItemUpdate);
+                popMenu.add(menuItemUpdate);
 
                 setBackground(new java.awt.Color(255, 255, 255));
                 setMaximumSize(new java.awt.Dimension(1181, 684));
@@ -93,12 +93,19 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
                 jLabel3.setText("Search");
 
                 txtSearch.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
+                txtSearch.addKeyListener(new java.awt.event.KeyAdapter() {
+                        public void keyReleased(java.awt.event.KeyEvent evt) {
+                                txtSearchKeyReleased(evt);
+                        }
+                });
 
                 btnAddPeriod.setText("Add Enrollment Period");
+                btnAddPeriod.addActionListener(this::btnAddPeriodActionPerformed);
 
                 jLabel4.setText("Status");
 
                 cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "OPEN", "CLOSED" }));
+                cbxStatus.addItemListener(this::cbxStatusItemStateChanged);
 
                 javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
                 jPanel1.setLayout(jPanel1Layout);
@@ -171,6 +178,18 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
                 // TODO add your handling code here:
         }//GEN-LAST:event_menuItemDeleteActionPerformed
 
+        private void txtSearchKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtSearchKeyReleased
+                // TODO add your handling code here:
+        }//GEN-LAST:event_txtSearchKeyReleased
+
+        private void cbxStatusItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_cbxStatusItemStateChanged
+                // TODO add your handling code here:
+        }//GEN-LAST:event_cbxStatusItemStateChanged
+
+        private void btnAddPeriodActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddPeriodActionPerformed
+                // TODO add your handling code here:
+        }//GEN-LAST:event_btnAddPeriodActionPerformed
+
 
         // Variables declaration - do not modify//GEN-BEGIN:variables
         private javax.swing.JButton btnAddPeriod;
@@ -180,10 +199,10 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
         private javax.swing.JLabel jLabel3;
         private javax.swing.JLabel jLabel4;
         private javax.swing.JPanel jPanel1;
-        private javax.swing.JPopupMenu jPopupMenu1;
         private javax.swing.JScrollPane jScrollPane1;
         private javax.swing.JMenuItem menuItemDelete;
         private javax.swing.JMenuItem menuItemUpdate;
+        private javax.swing.JPopupMenu popMenu;
         private javax.swing.JTable tableEnrollmentPeriods;
         private javax.swing.JTextField txtSearch;
         // End of variables declaration//GEN-END:variables
