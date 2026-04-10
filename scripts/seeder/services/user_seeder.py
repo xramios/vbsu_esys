@@ -6,7 +6,7 @@ Generates user accounts, student records, and faculty records.
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, TYPE_CHECKING
 
 import bcrypt
@@ -35,6 +35,9 @@ if TYPE_CHECKING:
 
 class UserSeeder(BaseSeeder):
     """Seeder for users, students, and faculty."""
+
+    ENGINEERING_DEPARTMENT_NAME = "College of Engineering"
+    FIXED_REGISTRAR_EMAIL = "registrar@vbsu.edu.ph"
 
     USERS_CREATE_SQL = """
         CREATE TABLE TABLE_NAME (
@@ -153,11 +156,9 @@ class UserSeeder(BaseSeeder):
             role: User role (STUDENT, FACULTY, REGISTRAR)
             user_type: Type identifier for internal tracking
         """
-        for _ in tqdm(range(count), desc=f"Creating {user_type} users", unit="user"):
-            email = fake.unique.email()
-            password = bcrypt.hashpw(
-                DEFAULT_PASSWORD.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
-            ).decode("utf-8")
+        for index in tqdm(range(count), desc=f"Creating {user_type} users", unit="user"):
+            email = self._resolve_user_email(role, index)
+            password = self._hash_password(DEFAULT_PASSWORD)
 
             last_id = self.execute_insert(
                 "users",
@@ -175,6 +176,56 @@ class UserSeeder(BaseSeeder):
                     password=password,
                 )
             )
+
+    def _resolve_user_email(self, role: str, index: int) -> str:
+        """Resolve user email, enforcing fixed registrar credentials for the first entry."""
+        if role == USER_ROLES["REGISTRAR"] and index == 0:
+            return self.FIXED_REGISTRAR_EMAIL
+
+        email = fake.unique.email()
+        while email.lower() == self.FIXED_REGISTRAR_EMAIL.lower():
+            email = fake.unique.email()
+        return email
+
+    def _hash_password(self, plain_password: str) -> str:
+        """Hash a plain text password with configured BCrypt rounds."""
+        return bcrypt.hashpw(
+            plain_password.encode("utf-8"), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+        ).decode("utf-8")
+
+    def _resolve_engineering_department(self) -> Any:
+        """Resolve College of Engineering department from seeded departments."""
+        for department in self.state.departments:
+            if (
+                department.department_name.strip().lower()
+                == self.ENGINEERING_DEPARTMENT_NAME.lower()
+            ):
+                return department
+
+        if self.state.departments:
+            fallback = self.state.departments[0]
+            print(
+                f"Warning: '{self.ENGINEERING_DEPARTMENT_NAME}' not found. "
+                f"Falling back to '{fallback.department_name}'."
+            )
+            return fallback
+
+        raise RuntimeError("No departments available to assign faculty records")
+
+    def _build_faculty_initial_password(self, last_name: str, birthdate: date) -> str:
+        """Build initial faculty password using the same format as FacultyForm."""
+        return f"{last_name}_{birthdate.isoformat()}"
+
+    def _update_user_password(self, cursor: Any, user_id: int, hashed_password: str) -> None:
+        """Persist updated user password using database-specific SQL placeholders."""
+        table_prefix = self.db_manager.adapter.get_table_prefix()
+        placeholder = self.db_manager.adapter.get_param_placeholder()
+        query = (
+            f"UPDATE {table_prefix}users "
+            f"SET password = {placeholder} "
+            f"WHERE id = {placeholder}"
+        )
+        cursor.execute(query, (hashed_password, user_id))
 
     def seed_students(self) -> None:
         """Seed students table with realistic student data."""
@@ -369,6 +420,7 @@ class UserSeeder(BaseSeeder):
         cursor = self.db_manager.connection.cursor()
         try:
             faculty_users = [u for u in self.state.users if u.user_type == "faculty"]
+            engineering_department = self._resolve_engineering_department()
 
             for user in tqdm(
                 faculty_users, desc="Creating faculty records", unit="faculty"
@@ -382,9 +434,14 @@ class UserSeeder(BaseSeeder):
                 )
                 contact_number = f"09{random.randint(10, 99)}-{random.randint(100, 999)}-{random.randint(1000, 9999)}"
                 faculty_age = random.randint(24, 65)
-                birthdate = datetime.now() - timedelta(days=faculty_age * 365)
+                birthdate = (datetime.now() - timedelta(days=faculty_age * 365)).date()
                 birthdate_str = self.format_datetime(birthdate)
-                department = random.choice(self.state.departments)
+                initial_password = self._build_faculty_initial_password(
+                    last_name, birthdate
+                )
+                hashed_password = self._hash_password(initial_password)
+                self._update_user_password(cursor, user.id, hashed_password)
+                user.password = hashed_password
 
                 last_id = self.execute_insert(
                     "faculty",
@@ -404,7 +461,7 @@ class UserSeeder(BaseSeeder):
                         middle_name,
                         contact_number,
                         birthdate_str,
-                        department.id,
+                        engineering_department.id,
                     ],
                     cursor=cursor,
                 )
@@ -418,7 +475,7 @@ class UserSeeder(BaseSeeder):
                         middle_name=middle_name,
                         contact_number=contact_number,
                         birthdate=birthdate,
-                        department_id=department.id,
+                        department_id=engineering_department.id,
                     )
                 )
 

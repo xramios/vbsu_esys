@@ -6,7 +6,7 @@ Seeds real data from CSV into selected tables.
 
 Supported targets:
 
-- `bundle` (clean reset + BSIT + NITEN2023 + students)
+- `bundle` (clean reset + BSIT + NITEN2023 + students + faculty + registrar)
 - `curriculum`
 - `subjects`
 - `semester`
@@ -15,7 +15,7 @@ Supported targets:
 - `users` (student accounts)
 - `students`
 
-It does not seed faculty, schedules, enrollments, or offerings.
+It does not seed schedules, enrollments, or offerings.
 
 ## Input Format
 
@@ -32,11 +32,16 @@ The importer is designed for the provided curriculum CSV format with these relev
 
 ### One-Command Bundle Target (Recommended)
 
-This is the simple reset workflow. It clears related tables first, then seeds:
+This is the simple reset workflow. For Derby, it drops known APP tables and reruns `src/main/resources/db/derby.sql` before seeding.
+For MySQL, it performs table clears.
+
+Then it seeds:
 
 - Course: BSIT (`Bachelor of Science in Information Technology`)
 - Curriculum: `NITEN2023`
 - Students from `docs/students.csv`
+- Faculty: Faker-generated, assigned to `College of Engineering`
+- Registrar account: `registrar@vbsu.edu.ph` with password `12345678`
 
 Run from the `scripts` directory:
 
@@ -45,7 +50,8 @@ python -m real_seeder.cli \
   --db-type derby \
   --database university_db \
   --user app \
-  --password derby
+  --password derby \
+  --faculty-count 10
 ```
 
 `bundle` is the default target, so `--target bundle` is optional.
@@ -99,6 +105,14 @@ Credential rules for student import:
 - Email: `lastname.firstname@vbsu.edu.ph`
 - Plain password basis: `lastname_YYYY` (YYYY = birth year)
 - Stored password: bcrypt hash of the plain password basis
+
+Credential rules for bundle faculty/registrar seeding:
+
+- Faculty count is dynamic via `--faculty-count` (default: `10`)
+- Faculty email pattern: `Faculty1@vbsu.edu.ph`, `Faculty2@vbsu.edu.ph`, and so on
+- Faculty plain password basis: `LastName_YYYY-MM-DD` (same format used by FacultyForm)
+- Faculty stored password: bcrypt hash of that plain basis
+- Registrar email/password: `registrar@vbsu.edu.ph` / `12345678` (stored as bcrypt hash)
 
 ## Notes
 

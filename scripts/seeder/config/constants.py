@@ -349,8 +349,8 @@ SEEDING_COUNTS: Dict[str, int] = {
     "courses": 15,
     "rooms": 100,
     "students": 4391,
-    "faculty": 50,
-    "registrars": 5,
+    "faculty": 10,
+    "registrars": 1,
     "subjects": 100,
     "enrollment_periods": 4,
 }

@@ -105,6 +105,12 @@ def create_parser() -> argparse.ArgumentParser:
         default=12,
         help="BCrypt rounds used to hash derived student passwords",
     )
+    parser.add_argument(
+        "--faculty-count",
+        type=int,
+        default=10,
+        help="Number of Faker-generated faculty accounts for bundle target",
+    )
     return parser
 
 
@@ -143,13 +149,14 @@ def main(argv: list[str] | None = None) -> int:
                 curriculum_name=args.curriculum_name,
                 curriculum_year=args.curriculum_year,
                 students_course_hint=args.students_course,
+                faculty_count=args.faculty_count,
             )
         except Exception as exc:
             print(f"Bundle seeding failed: {exc}")
             return 1
 
         print("Bundle seeding completed successfully.")
-        print(f"Cleared tables: {', '.join(summary.cleared_tables)}")
+        print(f"Reset actions: {', '.join(summary.cleared_tables)}")
         print(f"Course ID: {summary.curriculum.course_id}")
         print(f"Curriculum ID: {summary.curriculum.curriculum_id}")
         print(f"Subjects created: {summary.curriculum.subjects_created}")
@@ -161,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Prerequisites created: {summary.curriculum.prerequisites_created}")
         print(f"Users created: {summary.students.users_created}")
         print(f"Students created: {summary.students.students_created}")
+        print(f"Faculty created: {summary.staff.faculty_created}")
+        print(f"Registrar created: {summary.staff.registrar_created}")
+        print(f"Registrar email: {summary.staff.registrar_email}")
+        print("Registrar password: 12345678")
         return 0
 
     if args.target == "students":
