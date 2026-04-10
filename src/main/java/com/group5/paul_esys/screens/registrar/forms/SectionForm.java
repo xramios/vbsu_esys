@@ -4,6 +4,11 @@
  */
 package com.group5.paul_esys.screens.registrar.forms;
 
+import com.group5.paul_esys.modules.sections.model.Section;
+import com.group5.paul_esys.modules.sections.services.SectionService;
+import java.util.List;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author nytri
@@ -11,20 +16,189 @@ package com.group5.paul_esys.screens.registrar.forms;
 public class SectionForm extends javax.swing.JFrame {
 	
 	private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(SectionForm.class.getName());
+        private static final String STATUS_OPEN = "OPEN";
+        private static final List<String> STATUS_OPTIONS = List.of(
+                STATUS_OPEN,
+                "CLOSED",
+                "WAITLIST",
+                "DISSOLVED"
+        );
+
+        private final SectionService sectionService = SectionService.getInstance();
+        private final Section editingSection;
+        private final Runnable onSavedCallback;
 
 	/**
 	 * Creates new form SectionForm
 	 */
 	public SectionForm() {
-		initComponents();
+                this(null, null);
 	}
+
+        public SectionForm(Section editingSection, Runnable onSavedCallback) {
+                this.editingSection = editingSection;
+                this.onSavedCallback = onSavedCallback;
+                this.setUndecorated(true);
+                initComponents();
+                this.setLocationRelativeTo(null);
+                initializeForm();
+        }
+
+        private void initializeForm() {
+                spinnerCapaity.setModel(new javax.swing.SpinnerNumberModel(40, 1, 500, 1));
+                cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(STATUS_OPTIONS.toArray(new String[0])));
+                cbxStatus.setSelectedItem(STATUS_OPEN);
+
+                if (editingSection == null) {
+                        windowBar1.setTitle("Section Form");
+                        jLabel1.setText("Section Form");
+                        jLabel2.setText("Add section");
+                        btnSave.setText("Save");
+                        return;
+                }
+
+                windowBar1.setTitle("Update Section");
+                jLabel1.setText("Update Section");
+                jLabel2.setText("Update existing section");
+                btnSave.setText("Update");
+
+                txtSectionCode.setText(readSafeText(editingSection.getSectionCode()));
+                txtSectionName.setText(readSafeText(editingSection.getSectionName()));
+                spinnerCapaity.setValue(Math.max(1, normalizeCapacity(editingSection.getCapacity())));
+                cbxStatus.setSelectedItem(normalizeStatus(editingSection.getStatus()));
+        }
+
+        private String readSafeText(String value) {
+                if (value == null) {
+                        return "";
+                }
+
+                return value.trim();
+        }
+
+        private int normalizeCapacity(Integer capacity) {
+                return capacity == null ? 0 : capacity;
+        }
+
+        private String normalizeStatus(String status) {
+                if (status == null || status.trim().isEmpty()) {
+                        return STATUS_OPEN;
+                }
+
+                String normalized = status.trim().toUpperCase();
+                return STATUS_OPTIONS.contains(normalized) ? normalized : STATUS_OPEN;
+        }
+
+        private boolean isValidForm() {
+                String sectionCode = readSafeText(txtSectionCode.getText());
+                if (sectionCode.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Section code is required.",
+                                "Validation Error",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return false;
+                }
+
+                String sectionName = readSafeText(txtSectionName.getText());
+                if (sectionName.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Section name is required.",
+                                "Validation Error",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return false;
+                }
+
+                int capacity = ((Number) spinnerCapaity.getValue()).intValue();
+                if (capacity <= 0) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Capacity must be greater than zero.",
+                                "Validation Error",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return false;
+                }
+
+                if (!isSectionCodeAvailable(sectionCode)) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Section code already exists. Please use a different code.",
+                                "Validation Error",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return false;
+                }
+
+                return true;
+        }
+
+        private boolean isSectionCodeAvailable(String sectionCode) {
+                Long editingId = editingSection == null ? null : editingSection.getId();
+                String normalizedCode = sectionCode.trim();
+
+                for (Section section : sectionService.getAllSections()) {
+                        if (editingId != null && editingId.equals(section.getId())) {
+                                continue;
+                        }
+
+                        String existingCode = readSafeText(section.getSectionCode());
+                        if (existingCode.equalsIgnoreCase(normalizedCode)) {
+                                return false;
+                        }
+                }
+
+                return true;
+        }
+
+        private void saveSection() {
+                if (!isValidForm()) {
+                        return;
+                }
+
+                Section section = editingSection == null ? new Section() : editingSection;
+                section
+                        .setSectionCode(readSafeText(txtSectionCode.getText()))
+                        .setSectionName(readSafeText(txtSectionName.getText()))
+                        .setCapacity(((Number) spinnerCapaity.getValue()).intValue())
+                        .setStatus(normalizeStatus(cbxStatus.getSelectedItem() == null ? STATUS_OPEN : cbxStatus.getSelectedItem().toString()));
+
+                boolean success = editingSection == null
+                        ? sectionService.createSection(section)
+                        : sectionService.updateSection(section);
+
+                if (!success) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Unable to save section. Please verify values and try again.",
+                                editingSection == null ? "Create Section" : "Update Section",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        editingSection == null ? "Section created successfully." : "Section updated successfully.",
+                        "Success",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+
+                if (onSavedCallback != null) {
+                        onSavedCallback.run();
+                }
+
+                dispose();
+        }
 
 	/**
 	 * This method is called from within the constructor to initialize the
 	 * form. WARNING: Do NOT modify this code. The content of this method is
 	 * always regenerated by the Form Editor.
 	 */
-	@SuppressWarnings("unchecked")
         // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
         private void initComponents() {
 
@@ -43,7 +217,7 @@ public class SectionForm extends javax.swing.JFrame {
                 btnSave = new javax.swing.JButton();
                 btnCancel = new javax.swing.JButton();
 
-                setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+                setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
                 getContentPane().setLayout(new javax.swing.BoxLayout(getContentPane(), javax.swing.BoxLayout.Y_AXIS));
 
                 windowBar1.setTitle("Section Form");
@@ -65,19 +239,21 @@ public class SectionForm extends javax.swing.JFrame {
 
                 jLabel5.setText("Capacity");
 
-                spinnerCapaity.setModel(new javax.swing.SpinnerNumberModel(0, 0, null, 1));
+                spinnerCapaity.setModel(new javax.swing.SpinnerNumberModel(40, 1, 500, 1));
 
                 jLabel6.setText("Status");
 
-                cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+                cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "OPEN", "CLOSED", "WAITLIST", "DISSOLVED" }));
 
                 btnSave.setBackground(new java.awt.Color(119, 0, 0));
                 btnSave.setForeground(new java.awt.Color(255, 255, 255));
                 btnSave.setText("Save");
+                btnSave.addActionListener(this::btnSaveActionPerformed);
 
                 btnCancel.setBackground(new java.awt.Color(119, 0, 0));
                 btnCancel.setForeground(new java.awt.Color(255, 255, 255));
                 btnCancel.setText("Cancel");
+                btnCancel.addActionListener(this::btnCancelActionPerformed);
 
                 javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
                 jPanel1.setLayout(jPanel1Layout);
@@ -142,6 +318,14 @@ public class SectionForm extends javax.swing.JFrame {
 
                 pack();
         }// </editor-fold>//GEN-END:initComponents
+
+        private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
+                saveSection();
+        }//GEN-LAST:event_btnSaveActionPerformed
+
+        private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
+                dispose();
+        }//GEN-LAST:event_btnCancelActionPerformed
 
 	/**
 	 * @param args the command line arguments
