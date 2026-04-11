@@ -19,18 +19,19 @@ class RoomSeedSummary:
 
 class RealRoomSeeder:
     """Seeds rooms for the College of Engineering building.
-    
+
     Room numbering pattern:
     - First floor: EN100 - EN116
     - Second floor: EN200 - EN216
     - Third floor: EN300 - EN316
     - Fourth floor: EN400 - EN416
     - Computer Rooms: CLR1 - CLR5
-    
+
     All rooms have 40 capacity.
     """
 
     DEFAULT_CAPACITY = 40
+    BUILDING_NAME = "College of Engineering"
 
     def __init__(self, db_manager: DatabaseManager) -> None:
         self.db_manager = db_manager
@@ -54,13 +55,28 @@ class RealRoomSeeder:
                     rooms_skipped += 1
                     continue
 
-                self.db_manager.execute_insert(
-                    "rooms",
-                    ["room", "capacity"],
-                    [room_code, self.DEFAULT_CAPACITY],
-                    return_id=False,
-                    cursor=cursor,
-                )
+                # Determine room type based on room code
+                if room_code.startswith("CLR"):
+                    room_type = "LAB"
+                else:
+                    room_type = "LECTURE"
+
+                if self.db_manager.db_type == "derby":
+                    self.db_manager.execute_insert(
+                        "rooms",
+                        ["building", "room_type", "status", "room", "capacity"],
+                        [self.BUILDING_NAME, room_type, "AVAILABLE", room_code, self.DEFAULT_CAPACITY],
+                        return_id=False,
+                        cursor=cursor,
+                    )
+                else:
+                    self.db_manager.execute_insert(
+                        "rooms",
+                        ["room", "capacity"],
+                        [room_code, self.DEFAULT_CAPACITY],
+                        return_id=False,
+                        cursor=cursor,
+                    )
                 rooms_created += 1
 
             self.db_manager.commit()
