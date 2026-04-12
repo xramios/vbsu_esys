@@ -66,7 +66,7 @@ public class SubjectForm extends javax.swing.JDialog {
                 textAreaDescription.setText(editingSubject.getDescription() == null ? "" : editingSubject.getDescription());
 
                 if (editingSubject.getUnits() != null) {
-                        spinnerUnit.setValue(editingSubject.getUnits());
+                        spinnerUnit.setValue(editingSubject.getUnits().intValue());
                 }
 
 
@@ -151,7 +151,7 @@ public class SubjectForm extends javax.swing.JDialog {
 	}
 
         private boolean hasValidUnits() {
-                return (Integer) spinnerUnit.getValue() >= 0;
+                return ((Number) spinnerUnit.getValue()).intValue() >= 0;
         }
 
         private boolean isValidDepartmentSelection() {
@@ -181,7 +181,7 @@ public class SubjectForm extends javax.swing.JDialog {
                 subject
                         .setSubjectName(txtSubjectName.getText().trim())
                         .setSubjectCode(txtSubjectCode.getText().trim().toUpperCase())
-                        .setUnits(Float.valueOf((Integer) spinnerUnit.getValue()))
+                        .setUnits(((Number) spinnerUnit.getValue()).floatValue())
                         .setDescription(textAreaDescription.getText().trim())
                         .setDepartmentId(departmentId);
 
