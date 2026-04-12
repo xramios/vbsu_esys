@@ -4,6 +4,39 @@
  */
 package com.group5.paul_esys.screens.admin;
 
+import com.group5.paul_esys.modules.admin.model.Admin;
+import com.group5.paul_esys.modules.admin.services.AdminService;
+import com.group5.paul_esys.modules.faculty.model.Faculty;
+import com.group5.paul_esys.modules.faculty.services.FacultyService;
+import com.group5.paul_esys.modules.registrar.model.Registrar;
+import com.group5.paul_esys.modules.registrar.services.RegistrarService;
+import com.group5.paul_esys.modules.students.model.Student;
+import com.group5.paul_esys.modules.students.services.StudentService;
+import com.group5.paul_esys.modules.users.models.user.UserDirectoryRow;
+import com.group5.paul_esys.modules.users.services.UserDirectoryService;
+import com.group5.paul_esys.modules.users.services.UserSession;
+import com.group5.paul_esys.screens.registrar.forms.FacultyForm;
+import com.group5.paul_esys.screens.registrar.forms.RegistrarForm;
+import com.group5.paul_esys.screens.registrar.forms.StudentEnrollmentForm;
+import com.group5.paul_esys.screens.registrar.forms.UpdateStudentForm;
+import com.group5.paul_esys.screens.sign_in.SignIn;
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableModel;
+
 /**
  *
  * @author nytri
@@ -11,6 +44,28 @@ package com.group5.paul_esys.screens.admin;
 public class AdminDashboard extends javax.swing.JFrame {
 	
 	private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(AdminDashboard.class.getName());
+        private final UserDirectoryService userDirectoryService = UserDirectoryService.getInstance();
+        private final StudentService studentService = StudentService.getInstance();
+        private final FacultyService facultyService = FacultyService.getInstance();
+        private final RegistrarService registrarService = RegistrarService.getInstance();
+        private final AdminService adminService = AdminService.getInstance();
+
+        private final List<UserDirectoryRow> allUsers = new ArrayList<>();
+        private final List<UserDirectoryRow> filteredUsers = new ArrayList<>();
+
+        private final DefaultTableModel userTableModel = new DefaultTableModel(
+                new Object[][]{},
+                new String[] {"Full Name", "Contact Number", "Email", "Role"}
+        ) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                        return false;
+                }
+        };
+
+        private final javax.swing.JPopupMenu tablePopupMenu = new javax.swing.JPopupMenu();
+        private final JMenuItem menuItemUpdateUser = new JMenuItem("Update User");
+        private final JMenuItem menuItemDeleteUser = new JMenuItem("Delete User");
 
 	/**
 	 * Creates new form AdminDashboard
@@ -18,15 +73,386 @@ public class AdminDashboard extends javax.swing.JFrame {
 	public AdminDashboard() {
 		this.setUndecorated(true);
 		initComponents();
+		initializeDashboard();
 		this.setLocationRelativeTo(null);
 	}
+
+        private void initializeDashboard() {
+                configureWindowHeader();
+                configureAddUserMenu();
+                configureUserTable();
+                configureTablePopupMenu();
+                bindUiActions();
+                reloadUsers();
+        }
+
+        private void configureWindowHeader() {
+                UserSession session = UserSession.getInstance();
+                if (session.getUserInformation() != null && session.getUserInformation().getUser() instanceof Admin admin) {
+                        String fullName = String.format("%s, %s", admin.getLastName(), admin.getFirstName());
+                        jLabel1.setText("Welcome Admin " + fullName + "!");
+                }
+
+                windowBar1.setTitle("Admin Dashboard");
+
+                JButton logoutButton = new JButton("Logout");
+                logoutButton.setFont(new Font("Poppins", Font.PLAIN, 13));
+                logoutButton.putClientProperty("JButton.buttonType", "roundRect");
+                logoutButton.putClientProperty("JComponent.minimumWidth", 120);
+                logoutButton.addActionListener(evt -> logoutCurrentUser());
+
+                JPanel trailingPanel = new JPanel(new BorderLayout());
+                trailingPanel.setOpaque(false);
+                trailingPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+                trailingPanel.add(logoutButton, BorderLayout.SOUTH);
+
+                cbxRole.putClientProperty("JComboBox.trailingComponent", trailingPanel);
+        }
+
+        private void logoutCurrentUser() {
+                int confirm = JOptionPane.showConfirmDialog(
+                        this,
+                        "Are you sure you want to logout?",
+                        "Confirm Logout",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+
+                if (confirm != JOptionPane.YES_OPTION) {
+                        return;
+                }
+
+                UserSession.getInstance().logout();
+                this.dispose();
+                SwingUtilities.invokeLater(() -> new SignIn().setVisible(true));
+        }
+
+        private void configureAddUserMenu() {
+                menuItemAddRegistrar.setText("Add Registrar");
+                menuItemAddStudent.setText("Add Student");
+                menuItemAddFaculty.setText("Add Faculty");
+                menuItemAddAdmin.setText("Add Admin");
+
+                menuItemAddStudent.addActionListener(evt -> openStudentFormForCreate());
+                menuItemAddFaculty.addActionListener(evt -> openFacultyFormForCreate());
+                menuItemAddRegistrar.addActionListener(evt -> openRegistrarFormForCreate());
+                menuItemAddAdmin.addActionListener(evt -> openAdminFormForCreate());
+        }
+
+        private void configureUserTable() {
+                jTable1.setModel(userTableModel);
+                jTable1.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+                jTable1.setRowHeight(28);
+
+                jTable1.addMouseListener(new MouseAdapter() {
+                        @Override
+                        public void mouseClicked(MouseEvent evt) {
+                                if (evt.getClickCount() == 2 && SwingUtilities.isLeftMouseButton(evt)) {
+                                        openSelectedUserForUpdate();
+                                        return;
+                                }
+
+                                if (SwingUtilities.isRightMouseButton(evt)) {
+                                        int row = jTable1.rowAtPoint(evt.getPoint());
+                                        if (row >= 0) {
+                                                jTable1.setRowSelectionInterval(row, row);
+                                        }
+                                }
+                        }
+                });
+        }
+
+        private void configureTablePopupMenu() {
+                menuItemUpdateUser.addActionListener(evt -> openSelectedUserForUpdate());
+                menuItemDeleteUser.addActionListener(evt -> deleteSelectedUser());
+                tablePopupMenu.add(menuItemUpdateUser);
+                tablePopupMenu.add(menuItemDeleteUser);
+                jTable1.setComponentPopupMenu(tablePopupMenu);
+        }
+
+        private void bindUiActions() {
+                btnAddUser.addActionListener(evt -> showAddUserMenu());
+                jButton1.addActionListener(evt -> clearFilters());
+                cbxRole.addActionListener(evt -> applyFilters());
+
+                txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+                        @Override
+                        public void insertUpdate(DocumentEvent e) {
+                                applyFilters();
+                        }
+
+                        @Override
+                        public void removeUpdate(DocumentEvent e) {
+                                applyFilters();
+                        }
+
+                        @Override
+                        public void changedUpdate(DocumentEvent e) {
+                                applyFilters();
+                        }
+                });
+        }
+
+        private void showAddUserMenu() {
+                popupMenu.show(btnAddUser, 0, btnAddUser.getHeight());
+        }
+
+        private void clearFilters() {
+                txtSearch.setText("");
+                cbxRole.setSelectedItem("ALL");
+                applyFilters();
+        }
+
+        private void reloadUsers() {
+                allUsers.clear();
+                allUsers.addAll(userDirectoryService.getAllUsers());
+                applyFilters();
+        }
+
+        private void applyFilters() {
+                String searchTerm = txtSearch.getText() == null ? "" : txtSearch.getText().trim();
+                String selectedRole = cbxRole.getSelectedItem() == null
+                        ? "ALL"
+                        : cbxRole.getSelectedItem().toString();
+
+                filteredUsers.clear();
+                for (UserDirectoryRow userRow : allUsers) {
+                        boolean matchesRole = "ALL".equalsIgnoreCase(selectedRole)
+                                || userRow.getRole().name().equalsIgnoreCase(selectedRole);
+                        if (!matchesRole) {
+                                continue;
+                        }
+
+                        if (!userRow.matchesSearchTerm(searchTerm)) {
+                                continue;
+                        }
+
+                        filteredUsers.add(userRow);
+                }
+
+                userTableModel.setRowCount(0);
+                for (UserDirectoryRow userRow : filteredUsers) {
+                        userTableModel.addRow(new Object[] {
+                                userRow.getFullName(),
+                                userRow.getContactNumber() == null ? "-" : userRow.getContactNumber(),
+                                userRow.getEmail() == null ? "-" : userRow.getEmail(),
+                                userRow.getRole().name(),
+                        });
+                }
+        }
+
+        private UserDirectoryRow getSelectedUserRow() {
+                int selectedRow = jTable1.getSelectedRow();
+                if (selectedRow < 0) {
+                        return null;
+                }
+
+                int modelRow = jTable1.convertRowIndexToModel(selectedRow);
+                if (modelRow < 0 || modelRow >= filteredUsers.size()) {
+                        return null;
+                }
+
+                return filteredUsers.get(modelRow);
+        }
+
+        private void openSelectedUserForUpdate() {
+                UserDirectoryRow selectedUser = getSelectedUserRow();
+                if (selectedUser == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Please select a user to update.",
+                                "Update User",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                }
+
+                switch (selectedUser.getRole()) {
+                        case STUDENT -> openStudentFormForUpdate(selectedUser);
+                        case FACULTY -> openFacultyFormForUpdate(selectedUser);
+                        case REGISTRAR -> openRegistrarFormForUpdate(selectedUser);
+                        case ADMIN -> openAdminFormForUpdate(selectedUser);
+                }
+        }
+
+        private void openStudentFormForCreate() {
+                StudentEnrollmentForm form = new StudentEnrollmentForm(this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openStudentFormForUpdate(UserDirectoryRow selectedUser) {
+                if (selectedUser.getStudentId() == null || selectedUser.getStudentId().isBlank()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Selected student is missing a student ID.",
+                                "Update Student",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                Optional<Student> student = studentService.get(selectedUser.getStudentId());
+                if (student.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Student record not found.",
+                                "Update Student",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                UpdateStudentForm form = new UpdateStudentForm(
+                        this,
+                        true,
+                        student.get(),
+                        this::reloadUsers
+                );
+                form.setVisible(true);
+        }
+
+        private void openFacultyFormForCreate() {
+                FacultyForm form = new FacultyForm(null, null, this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openFacultyFormForUpdate(UserDirectoryRow selectedUser) {
+                if (selectedUser.getProfileId() == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Selected faculty user is missing a profile ID.",
+                                "Update Faculty",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                Optional<Faculty> faculty = facultyService.getFacultyById(selectedUser.getProfileId());
+                if (faculty.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Faculty record not found.",
+                                "Update Faculty",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                FacultyForm form = new FacultyForm(faculty.get(), null, this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openRegistrarFormForCreate() {
+                RegistrarForm form = new RegistrarForm(null, this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openRegistrarFormForUpdate(UserDirectoryRow selectedUser) {
+                if (selectedUser.getProfileId() == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Selected registrar user is missing a profile ID.",
+                                "Update Registrar",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                Optional<Registrar> registrar = registrarService.getRegistrarById(selectedUser.getProfileId());
+                if (registrar.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Registrar record not found.",
+                                "Update Registrar",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                RegistrarForm form = new RegistrarForm(registrar.get(), this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openAdminFormForCreate() {
+                AdminForm form = new AdminForm(null, this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void openAdminFormForUpdate(UserDirectoryRow selectedUser) {
+                if (selectedUser.getProfileId() == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Selected admin user is missing a profile ID.",
+                                "Update Admin",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                Optional<Admin> admin = adminService.getAdminById(selectedUser.getProfileId());
+                if (admin.isEmpty()) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Admin record not found.",
+                                "Update Admin",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                AdminForm form = new AdminForm(admin.get(), this::reloadUsers);
+                form.setVisible(true);
+        }
+
+        private void deleteSelectedUser() {
+                UserDirectoryRow selectedUser = getSelectedUserRow();
+                if (selectedUser == null) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Please select a user to delete.",
+                                "Delete User",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                }
+
+                int confirmation = JOptionPane.showConfirmDialog(
+                        this,
+                        "Delete " + selectedUser.getFullName() + " (" + selectedUser.getRole().name() + ")?",
+                        "Confirm Delete",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE
+                );
+
+                if (confirmation != JOptionPane.YES_OPTION) {
+                        return;
+                }
+
+                boolean deleted = userDirectoryService.deleteUser(selectedUser);
+                if (!deleted) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Failed to delete user. The account may be referenced by other records.",
+                                "Delete User",
+                                JOptionPane.ERROR_MESSAGE
+                        );
+                        return;
+                }
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "User deleted successfully.",
+                        "Delete User",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                reloadUsers();
+        }
 
 	/**
 	 * This method is called from within the constructor to initialize the
 	 * form. WARNING: Do NOT modify this code. The content of this method is
 	 * always regenerated by the Form Editor.
 	 */
-	@SuppressWarnings("unchecked")
         // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
         private void initComponents() {
 

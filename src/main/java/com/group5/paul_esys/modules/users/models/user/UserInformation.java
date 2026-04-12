@@ -3,6 +3,7 @@ package com.group5.paul_esys.modules.users.models.user;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import at.favre.lib.crypto.bcrypt.BCrypt.Result;
 import at.favre.lib.crypto.bcrypt.BCrypt.Verifyer;
+import com.group5.paul_esys.modules.admin.model.Admin;
 import com.group5.paul_esys.modules.faculty.model.Faculty;
 import com.group5.paul_esys.modules.registrar.model.Registrar;
 import com.group5.paul_esys.modules.students.model.Student;
@@ -28,6 +29,8 @@ public class UserInformation<T> {
             return Role.REGISTRAR;
         } else if (user instanceof Faculty) {
             return Role.FACULTY;
+        } else if (user instanceof Admin) {
+            return Role.ADMIN;
         }
 
         return null;

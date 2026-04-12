@@ -1,5 +1,7 @@
 package com.group5.paul_esys.modules.users.services;
 
+import com.group5.paul_esys.modules.admin.model.Admin;
+import com.group5.paul_esys.modules.admin.services.AdminService;
 import com.group5.paul_esys.modules.faculty.model.Faculty;
 import com.group5.paul_esys.modules.faculty.services.FacultyService;
 import com.group5.paul_esys.modules.registrar.model.Registrar;
@@ -25,6 +27,7 @@ public class AuthService {
   // Mga services
   private final StudentService studentService = StudentService.getInstance();
   private final FacultyService facultyService = FacultyService.getInstance();
+  private final AdminService adminService = AdminService.getInstance();
   private final RegistrarService registrarService =
     RegistrarService.getInstance();
 
@@ -112,6 +115,30 @@ public class AuthService {
     return userInformation;
   }
 
+  private UserInformation<Admin> getAdminInformation(
+    ResultSet rs,
+    LoginData loginData
+  ) throws SQLException {
+    logger.info("Fetching admin information for user: " + rs.getLong("id"));
+    Optional<Admin> admin = adminService.getAdminByUserId(rs.getLong("id"));
+
+    if (admin.isEmpty()) {
+      throw new IllegalArgumentException(
+        "The user account is not connected to any information"
+      );
+    }
+
+    UserInformation<Admin> userInformation = new UserInformation<>(
+      rs.getLong("id"),
+      loginData.getEmail(),
+      loginData.getPassword(),
+      Role.ADMIN
+    );
+
+    userInformation.setUser(admin.get());
+    return userInformation;
+  }
+
   public Optional<UserInformation<?>> login(LoginData loginData)
     throws IllegalArgumentException {
     if (!loginData.isValid()) {
@@ -152,6 +179,9 @@ public class AuthService {
           }
           case "FACULTY" -> {
             return Optional.of(getFacultyInformation(rs, loginData));
+          }
+          case "ADMIN" -> {
+            return Optional.of(getAdminInformation(rs, loginData));
           }
         }
       }

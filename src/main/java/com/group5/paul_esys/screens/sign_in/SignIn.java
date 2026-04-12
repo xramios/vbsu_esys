@@ -5,6 +5,7 @@ import com.group5.paul_esys.modules.users.models.user.LoginData;
 import com.group5.paul_esys.modules.users.models.user.UserInformation;
 import com.group5.paul_esys.modules.users.services.AuthService;
 import com.group5.paul_esys.modules.users.services.UserSession;
+import com.group5.paul_esys.screens.admin.AdminDashboard;
 import com.group5.paul_esys.screens.faculty.FacultyDashboard;
 import com.group5.paul_esys.screens.registrar.RegistrarDashboard;
 import com.group5.paul_esys.screens.student.StudentDashboard;
@@ -315,6 +316,10 @@ public class SignIn extends javax.swing.JFrame {
 	  FacultyDashboard form = new FacultyDashboard();
 	  form.setVisible(true);
         }
+                                case ADMIN -> {
+                                        AdminDashboard form = new AdminDashboard();
+                                        form.setVisible(true);
+                                }
       }
 
       logger.info("User is: " + userInformation.getUser().getClass().getName());
