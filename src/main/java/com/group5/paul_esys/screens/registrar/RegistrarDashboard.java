@@ -3,7 +3,6 @@ package com.group5.paul_esys.screens.registrar;
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
 import com.group5.paul_esys.modules.registrar.model.Registrar;
 import com.group5.paul_esys.modules.users.services.UserSession;
-import com.group5.paul_esys.screens.sign_in.SignIn;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarCurriculumManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarDepartmentManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarEnrollmentPeriodManagement;
@@ -13,6 +12,7 @@ import com.group5.paul_esys.screens.registrar.panels.RegistrarSchedulesManagemen
 import com.group5.paul_esys.screens.registrar.panels.RegistrarSectionsManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarStudentManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarSubjectManagement;
+import com.group5.paul_esys.screens.sign_in.SignIn;
 import java.awt.BorderLayout;
 import java.awt.Font;
 import javax.swing.BorderFactory;
@@ -143,19 +143,8 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
         // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
         private void initComponents() {
 
-                popMenuRegistrarTable = new javax.swing.JPopupMenu();
-                mItemRegistrarDelete = new javax.swing.JMenuItem();
-                mItemRegistrarUpdate = new javax.swing.JMenuItem();
                 tabbedPaneStudents = new javax.swing.JTabbedPane();
                 windowBar1 = new com.group5.paul_esys.components.WindowBar();
-
-                mItemRegistrarDelete.setText("Delete Student");
-                mItemRegistrarDelete.addActionListener(this::mItemRegistrarDeleteActionPerformed);
-                popMenuRegistrarTable.add(mItemRegistrarDelete);
-
-                mItemRegistrarUpdate.setText("Update Student");
-                mItemRegistrarUpdate.addActionListener(this::mItemRegistrarUpdateActionPerformed);
-                popMenuRegistrarTable.add(mItemRegistrarUpdate);
 
                 setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
                 setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
@@ -187,14 +176,6 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
                 pack();
         }// </editor-fold>//GEN-END:initComponents
 
-        private void mItemRegistrarDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mItemRegistrarDeleteActionPerformed
-                // TODO add your handling code here:
-        }//GEN-LAST:event_mItemRegistrarDeleteActionPerformed
-
-        private void mItemRegistrarUpdateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mItemRegistrarUpdateActionPerformed
-                // TODO add your handling code here:
-        }//GEN-LAST:event_mItemRegistrarUpdateActionPerformed
-
     /**
      * @param args the command line arguments
      */
@@ -205,9 +186,6 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
     }
 
         // Variables declaration - do not modify//GEN-BEGIN:variables
-        private javax.swing.JMenuItem mItemRegistrarDelete;
-        private javax.swing.JMenuItem mItemRegistrarUpdate;
-        private javax.swing.JPopupMenu popMenuRegistrarTable;
         private javax.swing.JTabbedPane tabbedPaneStudents;
         private com.group5.paul_esys.components.WindowBar windowBar1;
         // End of variables declaration//GEN-END:variables
