@@ -17,6 +17,7 @@ public class StudentMapper {
       rs.getDate("birthdate"),
       StudentStatus.valueOf(rs.getString("student_status")),
       rs.getLong("course_id"),
+      rs.getObject("curriculum_id", Long.class),
       rs.getLong("year_level"),
       rs.getTimestamp("created_at")
     );

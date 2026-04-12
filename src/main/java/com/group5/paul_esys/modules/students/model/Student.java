@@ -13,6 +13,7 @@ public class Student {
   private Date birthdate;
   private StudentStatus studentStatus;
   private Long courseId;
+  private Long curriculumId;
   private Long yearLevel;
   private Timestamp createdAt;
 
@@ -20,7 +21,19 @@ public class Student {
 
   }
 
-  public Student(String studentId, Long userId, String firstName, String lastName, String middleName, Date birthdate, StudentStatus studentStatus, Long courseId, Long yearLevel, Timestamp createdAt) {
+  public Student(
+    String studentId,
+    Long userId,
+    String firstName,
+    String lastName,
+    String middleName,
+    Date birthdate,
+    StudentStatus studentStatus,
+    Long courseId,
+    Long curriculumId,
+    Long yearLevel,
+    Timestamp createdAt
+  ) {
     this.studentId = studentId;
     this.userId = userId;
     this.firstName = firstName;
@@ -29,6 +42,7 @@ public class Student {
     this.birthdate = birthdate;
     this.studentStatus = studentStatus;
     this.courseId = courseId;
+    this.curriculumId = curriculumId;
     this.yearLevel = yearLevel;
     this.createdAt = createdAt;
   }
@@ -102,6 +116,15 @@ public class Student {
 
   public Student setCourseId(Long courseId) {
     this.courseId = courseId;
+    return this;
+  }
+
+  public Long getCurriculumId() {
+    return curriculumId;
+  }
+
+  public Student setCurriculumId(Long curriculumId) {
+    this.curriculumId = curriculumId;
     return this;
   }
 

@@ -5,6 +5,7 @@ import com.group5.paul_esys.modules.enrollments.model.StudentSemesterProgress;
 import com.group5.paul_esys.modules.enrollments.utils.StudentSemesterProgressUtils;
 import com.group5.paul_esys.modules.users.services.ConnectionService;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -97,6 +98,28 @@ public class StudentSemesterProgressService {
     }
   }
 
+  public boolean initializeInitialSemesterProgress(Connection conn, String studentId, Long curriculumId) throws SQLException {
+    if (conn == null || studentId == null || studentId.isBlank() || curriculumId == null) {
+      return false;
+    }
+
+    Optional<Long> firstSemesterId = resolveFirstSemesterId(conn, curriculumId);
+    if (firstSemesterId.isEmpty()) {
+      logger.warn(
+          "Cannot initialize semester progress: first semester not found for curriculum {}",
+          curriculumId
+      );
+      return false;
+    }
+
+    if (progressExists(conn, studentId, firstSemesterId.get())) {
+      return true;
+    }
+
+    insertProgress(conn, studentId, curriculumId, firstSemesterId.get(), SemesterProgressStatus.NOT_STARTED);
+    return true;
+  }
+
   private Optional<String> getStudentIdByEnrollmentId(Long enrollmentId) {
     String sql = "SELECT student_id FROM enrollments WHERE id = ?";
 
@@ -138,6 +161,61 @@ public class StudentSemesterProgressService {
         }
 
         return getLatestCurriculumByCourse(conn, courseId);
+      }
+    }
+  }
+
+  private Optional<Long> resolveFirstSemesterId(Connection conn, Long curriculumId) throws SQLException {
+    boolean hasYearLevel = hasYearLevelColumn(conn);
+    String semesterRank =
+        "CASE "
+            + "WHEN UPPER(TRIM(semester)) LIKE '%1ST%' OR UPPER(TRIM(semester)) LIKE '%FIRST%' OR UPPER(TRIM(semester)) = 'SEMESTER 1' THEN 1 "
+            + "WHEN UPPER(TRIM(semester)) LIKE '%2ND%' OR UPPER(TRIM(semester)) LIKE '%SECOND%' OR UPPER(TRIM(semester)) = 'SEMESTER 2' THEN 2 "
+            + "WHEN UPPER(TRIM(semester)) LIKE '%3RD%' OR UPPER(TRIM(semester)) LIKE '%THIRD%' OR UPPER(TRIM(semester)) = 'SEMESTER 3' THEN 3 "
+            + "WHEN UPPER(TRIM(semester)) LIKE '%SUMMER%' THEN 9 "
+            + "ELSE 99 END";
+
+    String sql = hasYearLevel
+        ? "SELECT id FROM semester WHERE curriculum_id = ? ORDER BY year_level ASC, " + semesterRank + ", created_at ASC, id ASC FETCH FIRST 1 ROWS ONLY"
+        : "SELECT id FROM semester WHERE curriculum_id = ? ORDER BY " + semesterRank + ", created_at ASC, id ASC FETCH FIRST 1 ROWS ONLY";
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setLong(1, curriculumId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return Optional.of(rs.getLong("id"));
+        }
+      }
+    }
+
+    return Optional.empty();
+  }
+
+  private boolean hasYearLevelColumn(Connection conn) {
+    try {
+      DatabaseMetaData metadata = conn.getMetaData();
+      try (ResultSet rs = metadata.getColumns(null, null, "SEMESTER", "YEAR_LEVEL")) {
+        if (rs.next()) {
+          return true;
+        }
+      }
+
+      try (ResultSet rs = metadata.getColumns(null, null, "semester", "year_level")) {
+        return rs.next();
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+
+  private boolean progressExists(Connection conn, String studentId, Long semesterId) throws SQLException {
+    String sql = "SELECT 1 FROM student_semester_progress WHERE student_id = ? AND semester_id = ? FETCH FIRST 1 ROWS ONLY";
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, studentId);
+      ps.setLong(2, semesterId);
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
       }
     }
   }
