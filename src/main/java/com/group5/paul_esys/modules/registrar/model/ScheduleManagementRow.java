@@ -2,12 +2,15 @@ package com.group5.paul_esys.modules.registrar.model;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public record ScheduleManagementRow(
     Long scheduleId,
     Long offeringId,
     Long enrollmentPeriodId,
     String enrollmentPeriodLabel,
+    Long sectionId,
     String sectionCode,
     String subjectCode,
     String subjectName,
@@ -19,17 +22,23 @@ public record ScheduleManagementRow(
     Long facultyId,
     String facultyName,
     boolean roomConflict,
-    boolean facultyConflict
+    boolean facultyConflict,
+    boolean sectionConflict
 ) {
 
   private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-  public ScheduleManagementRow withConflictFlags(boolean resolvedRoomConflict, boolean resolvedFacultyConflict) {
+  public ScheduleManagementRow withConflictFlags(
+      boolean resolvedRoomConflict,
+      boolean resolvedFacultyConflict,
+      boolean resolvedSectionConflict
+  ) {
     return new ScheduleManagementRow(
         scheduleId,
         offeringId,
         enrollmentPeriodId,
         enrollmentPeriodLabel,
+        sectionId,
         sectionCode,
         subjectCode,
         subjectName,
@@ -41,12 +50,13 @@ public record ScheduleManagementRow(
         facultyId,
         facultyName,
         resolvedRoomConflict,
-        resolvedFacultyConflict
+        resolvedFacultyConflict,
+        resolvedSectionConflict
     );
   }
 
   public boolean hasConflict() {
-    return roomConflict || facultyConflict;
+    return roomConflict || facultyConflict || sectionConflict;
   }
 
   public String timeRangeLabel() {
@@ -74,19 +84,24 @@ public record ScheduleManagementRow(
   }
 
   public String conflictLabel() {
-    if (roomConflict && facultyConflict) {
-      return "ROOM + FACULTY";
-    }
-
+    List<String> labels = new ArrayList<>(3);
     if (roomConflict) {
-      return "ROOM";
+      labels.add("ROOM");
     }
 
     if (facultyConflict) {
-      return "FACULTY";
+      labels.add("FACULTY");
     }
 
-    return "NONE";
+    if (sectionConflict) {
+      labels.add("SECTION");
+    }
+
+    if (labels.isEmpty()) {
+      return "NONE";
+    }
+
+    return String.join(" + ", labels);
   }
 
   public String searchableText() {

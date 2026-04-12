@@ -44,6 +44,7 @@ public class RegistrarScheduleManagementService {
           s.day,
           s.start_time,
           s.end_time,
+          o.section_id,
           o.enrollment_period_id,
           ep.school_year,
           ep.semester,
@@ -98,6 +99,7 @@ public class RegistrarScheduleManagementService {
                 rs.getString("school_year"),
                 rs.getString("semester")
             ),
+            rsGetLong(rs, "section_id"),
             safeText(rs.getString("section_code"), "N/A"),
             safeText(rs.getString("subject_code"), "N/A"),
             safeText(rs.getString("subject_name"), "N/A"),
@@ -111,6 +113,7 @@ public class RegistrarScheduleManagementService {
                 rs.getString("faculty_first_name"),
                 rs.getString("faculty_last_name")
             ),
+            false,
             false,
             false
         ));
@@ -483,6 +486,13 @@ public class RegistrarScheduleManagementService {
       return new ScheduleSaveResult(false, "A schedule with the same offering, day, and start time already exists.");
     }
 
+    if (hasSectionConflict(conn, request, isUpdate)) {
+      return new ScheduleSaveResult(
+          false,
+          "Section conflict detected. The selected section already has a class in the selected day and time range."
+      );
+    }
+
     if (request.roomId() != null && hasRoomConflict(conn, request, isUpdate)) {
       return new ScheduleSaveResult(
           false,
@@ -525,29 +535,36 @@ public class RegistrarScheduleManagementService {
     String sql = isUpdate
         ? """
           SELECT 1
-          FROM schedules
-          WHERE room_id = ?
-            AND day = ?
-            AND id <> ?
-            AND start_time < ?
-            AND end_time > ?
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE s.room_id = ?
+            AND s.day = ?
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.id <> ?
+            AND s.start_time < ?
+            AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """
         : """
           SELECT 1
-          FROM schedules
-          WHERE room_id = ?
-            AND day = ?
-            AND start_time < ?
-            AND end_time > ?
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE s.room_id = ?
+            AND s.day = ?
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.start_time < ?
+            AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setLong(1, request.roomId());
-      ps.setString(2, request.day().name());
+      ps.setLong(1, request.offeringId());
+      ps.setLong(2, request.roomId());
+      ps.setString(3, request.day().name());
 
-      int parameterIndex = 3;
+      int parameterIndex = 4;
       if (isUpdate) {
         ps.setLong(parameterIndex++, request.scheduleId());
       }
@@ -565,26 +582,79 @@ public class RegistrarScheduleManagementService {
     String sql = isUpdate
         ? """
           SELECT 1
-          FROM schedules
-          WHERE faculty_id = ?
-            AND day = ?
-            AND id <> ?
-            AND start_time < ?
-            AND end_time > ?
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE s.faculty_id = ?
+            AND s.day = ?
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.id <> ?
+            AND s.start_time < ?
+            AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """
         : """
           SELECT 1
-          FROM schedules
-          WHERE faculty_id = ?
-            AND day = ?
-            AND start_time < ?
-            AND end_time > ?
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE s.faculty_id = ?
+            AND s.day = ?
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.start_time < ?
+            AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setLong(1, request.facultyId());
+      ps.setLong(1, request.offeringId());
+      ps.setLong(2, request.facultyId());
+      ps.setString(3, request.day().name());
+
+      int parameterIndex = 4;
+      if (isUpdate) {
+        ps.setLong(parameterIndex++, request.scheduleId());
+      }
+
+      ps.setTime(parameterIndex++, Time.valueOf(request.endTime()));
+      ps.setTime(parameterIndex, Time.valueOf(request.startTime()));
+
+      try (ResultSet rs = ps.executeQuery()) {
+        return rs.next();
+      }
+    }
+  }
+
+  private boolean hasSectionConflict(Connection conn, ScheduleUpsertRequest request, boolean isUpdate) throws SQLException {
+    String sql = isUpdate
+        ? """
+          SELECT 1
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE existing_o.section_id = target_o.section_id
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.day = ?
+            AND s.id <> ?
+            AND s.start_time < ?
+            AND s.end_time > ?
+          FETCH FIRST 1 ROWS ONLY
+          """
+        : """
+          SELECT 1
+          FROM schedules s
+          INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
+          INNER JOIN offerings target_o ON target_o.id = ?
+          WHERE existing_o.section_id = target_o.section_id
+            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND s.day = ?
+            AND s.start_time < ?
+            AND s.end_time > ?
+          FETCH FIRST 1 ROWS ONLY
+          """;
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setLong(1, request.offeringId());
       ps.setString(2, request.day().name());
 
       int parameterIndex = 3;
@@ -606,32 +676,83 @@ public class RegistrarScheduleManagementService {
       return rows;
     }
 
-    Map<Long, Boolean> roomConflicts = resolveConflicts(rows, true);
-    Map<Long, Boolean> facultyConflicts = resolveConflicts(rows, false);
+    Map<Long, Boolean> roomConflicts = resolveOwnerConflicts(rows, true);
+    Map<Long, Boolean> facultyConflicts = resolveOwnerConflicts(rows, false);
+    Map<Long, Boolean> sectionConflicts = resolveSectionConflicts(rows);
 
     List<ScheduleManagementRow> resolvedRows = new ArrayList<>(rows.size());
     for (ScheduleManagementRow row : rows) {
       resolvedRows.add(row.withConflictFlags(
           roomConflicts.getOrDefault(row.scheduleId(), false),
-          facultyConflicts.getOrDefault(row.scheduleId(), false)
+          facultyConflicts.getOrDefault(row.scheduleId(), false),
+          sectionConflicts.getOrDefault(row.scheduleId(), false)
       ));
     }
 
     return resolvedRows;
   }
 
-  private Map<Long, Boolean> resolveConflicts(List<ScheduleManagementRow> rows, boolean resolveRoomConflicts) {
+  private Map<Long, Boolean> resolveOwnerConflicts(List<ScheduleManagementRow> rows, boolean resolveRoomConflicts) {
     Map<Long, Boolean> conflictsByScheduleId = new HashMap<>();
     Map<String, List<ScheduleManagementRow>> groups = new LinkedHashMap<>();
 
     for (ScheduleManagementRow row : rows) {
       Long ownerId = resolveRoomConflicts ? row.roomId() : row.facultyId();
 
-      if (ownerId == null || row.day() == null || row.startTime() == null || row.endTime() == null) {
+      if (
+          ownerId == null
+              || row.enrollmentPeriodId() == null
+              || row.day() == null
+              || row.startTime() == null
+              || row.endTime() == null
+      ) {
         continue;
       }
 
-      String key = row.day() + '#' + ownerId;
+      String key = row.day() + '#' + row.enrollmentPeriodId() + '#' + ownerId;
+      groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(row);
+    }
+
+    for (List<ScheduleManagementRow> groupedRows : groups.values()) {
+      groupedRows.sort(Comparator.comparing(ScheduleManagementRow::startTime));
+
+      for (int index = 0; index < groupedRows.size(); index++) {
+        ScheduleManagementRow current = groupedRows.get(index);
+
+        for (int nextIndex = index + 1; nextIndex < groupedRows.size(); nextIndex++) {
+          ScheduleManagementRow candidate = groupedRows.get(nextIndex);
+
+          if (!current.endTime().isAfter(candidate.startTime())) {
+            break;
+          }
+
+          if (isOverlapping(current.startTime(), current.endTime(), candidate.startTime(), candidate.endTime())) {
+            conflictsByScheduleId.put(current.scheduleId(), true);
+            conflictsByScheduleId.put(candidate.scheduleId(), true);
+          }
+        }
+      }
+    }
+
+    return conflictsByScheduleId;
+  }
+
+  private Map<Long, Boolean> resolveSectionConflicts(List<ScheduleManagementRow> rows) {
+    Map<Long, Boolean> conflictsByScheduleId = new HashMap<>();
+    Map<String, List<ScheduleManagementRow>> groups = new LinkedHashMap<>();
+
+    for (ScheduleManagementRow row : rows) {
+      if (
+          row.sectionId() == null
+              || row.enrollmentPeriodId() == null
+              || row.day() == null
+              || row.startTime() == null
+              || row.endTime() == null
+      ) {
+        continue;
+      }
+
+      String key = row.day() + '#' + row.enrollmentPeriodId() + '#' + row.sectionId();
       groups.computeIfAbsent(key, ignored -> new ArrayList<>()).add(row);
     }
 

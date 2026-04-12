@@ -433,15 +433,33 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
   }
 
   private String buildConflictMessage(ScheduleManagementRow row) {
-    if (row.roomConflict() && row.facultyConflict()) {
-      return "Potential room and faculty overlap detected on " + row.day() + " at " + row.timeRangeLabel() + ".";
-    }
-
+    List<String> conflictTypes = new ArrayList<>();
     if (row.roomConflict()) {
-      return "Potential room overlap detected on " + row.day() + " at " + row.timeRangeLabel() + ".";
+      conflictTypes.add("room");
     }
 
-    return "Potential faculty overlap detected on " + row.day() + " at " + row.timeRangeLabel() + ".";
+    if (row.facultyConflict()) {
+      conflictTypes.add("faculty");
+    }
+
+    if (row.sectionConflict()) {
+      conflictTypes.add("section");
+    }
+
+    if (conflictTypes.isEmpty()) {
+      return "No conflict detected.";
+    }
+
+    String conflictSummary;
+    if (conflictTypes.size() == 1) {
+      conflictSummary = conflictTypes.get(0);
+    } else {
+      String leading = String.join(", ", conflictTypes.subList(0, conflictTypes.size() - 1));
+      String trailing = conflictTypes.get(conflictTypes.size() - 1);
+      conflictSummary = leading + " and " + trailing;
+    }
+
+    return "Potential " + conflictSummary + " overlap detected on " + row.day() + " at " + row.timeRangeLabel() + ".";
   }
 
   private void openCreateScheduleDialog() {
