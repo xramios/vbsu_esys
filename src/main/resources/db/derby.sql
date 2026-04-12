@@ -138,7 +138,8 @@ CREATE TABLE semester
     semester      varchar(24) NOT NULL,
     year_level int NOT NULL,
     created_at    timestamp default current_timestamp,
-    updated_at    timestamp default current_timestamp
+    updated_at    timestamp default current_timestamp,
+    UNIQUE (curriculum_id, semester, year_level)
 );
 
 /**

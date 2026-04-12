@@ -165,12 +165,23 @@ public class SemesterForm extends javax.swing.JFrame {
             return false;
         }
 
+        String semesterName = txtSem.getText().trim();
         Integer yearLevel = readYearLevel();
         if (yearLevel == null || yearLevel < 1) {
             JOptionPane.showMessageDialog(
                 this,
                 "Year level must be a positive integer.",
                 "Validation Error",
+                JOptionPane.WARNING_MESSAGE
+            );
+            return false;
+        }
+
+        if (hasDuplicateSemester(semesterName, yearLevel)) {
+            JOptionPane.showMessageDialog(
+                this,
+                "A semester with the same year level and semester name already exists.",
+                "Duplicate Entry",
                 JOptionPane.WARNING_MESSAGE
             );
             return false;
@@ -188,6 +199,26 @@ public class SemesterForm extends javax.swing.JFrame {
         }
 
         return true;
+    }
+
+    private boolean hasDuplicateSemester(String semesterName, Integer yearLevel) {
+        Object selectedCurriculum = cbxCur.getSelectedItem();
+        if (selectedCurriculum == null) {
+            return false;
+        }
+
+        Long curriculumId = curriculumIdByLabel.get(selectedCurriculum.toString());
+        if (curriculumId == null) {
+            return false;
+        }
+
+        Semester semester = editingSemester == null ? new Semester() : editingSemester;
+        semester
+            .setCurriculumId(curriculumId)
+            .setSemester(semesterName)
+            .setYearLevel(yearLevel);
+
+        return semesterService.semesterExists(semester);
     }
 
     private Integer readYearLevel() {
@@ -216,10 +247,11 @@ public class SemesterForm extends javax.swing.JFrame {
         String selectedCurriculum = cbxCur.getSelectedItem().toString();
         Long curriculumId = curriculumIdByLabel.get(selectedCurriculum);
         Integer yearLevel = readYearLevel();
+        String semesterName = txtSem.getText().trim();
 
         Semester semester = editingSemester == null ? new Semester() : editingSemester;
         semester
-            .setSemester(txtSem.getText().trim())
+            .setSemester(semesterName)
             .setCurriculumId(curriculumId);
         semester.setYearLevel(yearLevel);
 

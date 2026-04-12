@@ -101,6 +101,47 @@ public class SemesterService {
     return semesters;
   }
 
+  public boolean semesterExists(Semester semester) {
+    if (semester == null || semester.getCurriculumId() == null || semester.getSemester() == null) {
+      return false;
+    }
+
+    try (Connection conn = ConnectionService.getConnection()) {
+      boolean hasYearLevel = hasYearLevelColumn(conn);
+      String sql;
+      if (hasYearLevel) {
+        sql = semester.getId() == null
+          ? "SELECT 1 FROM semester WHERE curriculum_id = ? AND UPPER(TRIM(semester)) = UPPER(TRIM(?)) AND year_level = ? FETCH FIRST 1 ROWS ONLY"
+          : "SELECT 1 FROM semester WHERE curriculum_id = ? AND UPPER(TRIM(semester)) = UPPER(TRIM(?)) AND year_level = ? AND id <> ? FETCH FIRST 1 ROWS ONLY";
+      } else {
+        sql = semester.getId() == null
+          ? "SELECT 1 FROM semester WHERE curriculum_id = ? AND UPPER(TRIM(semester)) = UPPER(TRIM(?)) FETCH FIRST 1 ROWS ONLY"
+          : "SELECT 1 FROM semester WHERE curriculum_id = ? AND UPPER(TRIM(semester)) = UPPER(TRIM(?)) AND id <> ? FETCH FIRST 1 ROWS ONLY";
+      }
+
+      try (PreparedStatement ps = conn.prepareStatement(sql)) {
+        ps.setLong(1, semester.getCurriculumId());
+        ps.setString(2, semester.getSemester().trim());
+
+        if (hasYearLevel) {
+          ps.setInt(3, semester.getYearLevel() == null ? 1 : semester.getYearLevel());
+          if (semester.getId() != null) {
+            ps.setLong(4, semester.getId());
+          }
+        } else if (semester.getId() != null) {
+          ps.setLong(3, semester.getId());
+        }
+
+        try (ResultSet rs = ps.executeQuery()) {
+          return rs.next();
+        }
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return false;
+    }
+  }
+
   public boolean createSemester(Semester semester) {
     try (Connection conn = ConnectionService.getConnection()) {
       boolean hasYearLevel = hasYearLevelColumn(conn);
