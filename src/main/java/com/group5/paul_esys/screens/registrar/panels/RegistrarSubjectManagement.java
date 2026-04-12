@@ -6,6 +6,7 @@ package com.group5.paul_esys.screens.registrar.panels;
 
 import com.group5.paul_esys.modules.departments.model.Department;
 import com.group5.paul_esys.modules.departments.services.DepartmentService;
+import com.group5.paul_esys.modules.prerequisites.services.PrerequisiteService;
 import com.group5.paul_esys.modules.subjects.model.Subject;
 import com.group5.paul_esys.modules.subjects.services.SubjectService;
 import com.group5.paul_esys.screens.registrar.forms.ManagePrerequisiteForm;
@@ -15,6 +16,8 @@ import java.awt.Window;
 import java.awt.event.ItemEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,9 +40,11 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
 
         private final SubjectService subjectService = SubjectService.getInstance();
         private final DepartmentService departmentService = DepartmentService.getInstance();
+        private final PrerequisiteService prerequisiteService = PrerequisiteService.getInstance();
 
         private final Map<Long, String> departmentNameById = new LinkedHashMap<>();
         private final Map<String, Long> departmentIdByName = new LinkedHashMap<>();
+        private final Map<Long, Integer> prerequisiteCountBySubjectId = new LinkedHashMap<>();
 
         private List<Subject> subjects = new ArrayList<>();
         private List<Subject> filteredSubjects = new ArrayList<>();
@@ -99,7 +104,7 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
         private void configureTableModel() {
                 DefaultTableModel model = new DefaultTableModel(
                         new Object[][]{},
-                        new String[]{"Name", "Code", "Units", "Description", "Department"}
+                        new String[]{"Name", "Code", "Units", "Prerequisites", "Description", "Department"}
                 ) {
                         @Override
                         public boolean isCellEditable(int rowIndex, int columnIndex) {
@@ -186,12 +191,19 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                                         lookup.put(department.getId(), safeText(department.getDepartmentName(), "N/A"));
                                 }
 
+                                Map<Long, Integer> prerequisiteCounts = new LinkedHashMap<>();
+                                prerequisiteService.getAllPrerequisites().forEach(prerequisite -> {
+                                        if (prerequisite.getSubjectId() != null) {
+                                                prerequisiteCounts.merge(prerequisite.getSubjectId(), 1, Integer::sum);
+                                        }
+                                });
+
                                 List<Subject> loadedSubjects = new ArrayList<>();
                                 for (SubjectService.SubjectWithDepartment swd : subjectsWithDepts) {
                                         loadedSubjects.add(swd.getSubject());
                                 }
 
-                                return new SubjectLoadResult(loadedSubjects, lookup, departments);
+                                return new SubjectLoadResult(loadedSubjects, lookup, departments, prerequisiteCounts);
                         }
 
                         @Override
@@ -204,6 +216,8 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                                         cachedDepartments = result.departments;
                                         departmentNameById.clear();
                                         departmentNameById.putAll(result.departmentLookup);
+                                        prerequisiteCountBySubjectId.clear();
+                                        prerequisiteCountBySubjectId.putAll(result.prerequisiteCountBySubjectId);
                                         reloadDepartmentFilterOptions();
                                         applyFilters();
                                 } catch (Exception e) {
@@ -220,7 +234,12 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                 });
         }
 
-        private record SubjectLoadResult(List<Subject> subjects, Map<Long, String> departmentLookup, List<Department> departments) {}
+        private record SubjectLoadResult(
+                List<Subject> subjects,
+                Map<Long, String> departmentLookup,
+                List<Department> departments,
+                Map<Long, Integer> prerequisiteCountBySubjectId
+        ) {}
 
         private void reloadDepartmentFilterOptions() {
                 Object selectedDepartment = cbxDepartment.getSelectedItem();
@@ -297,6 +316,7 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                                         safeText(subject.getSubjectName(), "N/A"),
                                         safeText(subject.getSubjectCode(), "N/A"),
                                         subject.getUnits() == null ? "N/A" : subject.getUnits(),
+                                        prerequisiteCountBySubjectId.getOrDefault(subject.getId(), 0),
                                         buildDescriptionPreview(subject.getDescription()),
                                         departmentNameById.getOrDefault(subject.getDepartmentId(), "N/A")
                                 }
@@ -446,6 +466,12 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                 if (parentWindow != null) {
                         form.setLocationRelativeTo(parentWindow);
                 }
+                form.addWindowListener(new WindowAdapter() {
+                        @Override
+                        public void windowClosed(WindowEvent e) {
+                                initializeSubjects();
+                        }
+                });
                 form.setVisible(true);
         }
 
@@ -504,7 +530,7 @@ public class RegistrarSubjectManagement extends javax.swing.JPanel {
                                 {null, null, null, null, null, null}
                         },
                         new String [] {
-                                "Name", "Code", "Units", "Description", "Curriculum", "Department"
+                                "Name", "Code", "Units", "Prerequisites", "Description", "Department"
                         }
                 ));
                 jScrollPane1.setViewportView(tableSubjects);
