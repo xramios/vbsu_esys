@@ -18,8 +18,8 @@
 CREATE TABLE enrollment_period
 (
     id          bigint      NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    school_year varchar(24) not null,
-    semester    varchar(24) not null,
+    school_year varchar(32) not null,
+    semester    varchar(64) not null,
     start_date  TIMESTAMP   not null,
     end_date    TIMESTAMP   not null,
     description clob,
@@ -35,9 +35,9 @@ CREATE TABLE enrollment_period
 CREATE TABLE users
 (
     id         bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    email      varchar(255),
+    email      varchar(64) UNIQUE NOT NULL,
     password   char(60),
-    role       varchar(20) CHECK (role IN ('STUDENT', 'REGISTRAR', 'FACULTY', 'ADMIN')),
+    role       varchar(16) CHECK (role IN ('STUDENT', 'REGISTRAR', 'FACULTY', 'ADMIN')),
     created_at timestamp default current_timestamp,
     updated_at timestamp default current_timestamp
 );
@@ -51,8 +51,8 @@ CREATE TABLE admins
 (
     id             bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id        bigint,
-    first_name     varchar(128),
-    last_name      varchar(128),
+    first_name     varchar(64),
+    last_name      varchar(64),
     contact_number varchar(20),
     updated_at     timestamp default current_timestamp,
     created_at     timestamp default current_timestamp
@@ -67,11 +67,11 @@ CREATE TABLE students
 (
     student_id     varchar(32) PRIMARY KEY,
     user_id        bigint,
-    first_name     varchar(128) NOT NULL,
-    last_name      varchar(128) NOT NULL,
-    middle_name    varchar(48),
+    first_name     varchar(64) NOT NULL,
+    last_name      varchar(64) NOT NULL,
+    middle_name    varchar(32),
     birthdate      date         NOT NULL,
-    student_status varchar(20) DEFAULT 'REGULAR' CHECK (student_status IN ('REGULAR', 'IRREGULAR')),
+    student_status varchar(16) DEFAULT 'REGULAR' CHECK (student_status IN ('REGULAR', 'IRREGULAR')),
     course_id      bigint,
     curriculum_id  bigint,
     year_level     int       default 1,
@@ -87,7 +87,7 @@ CREATE TABLE students
 CREATE TABLE subjects
 (
     id            bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    subject_name  varchar(32),
+    subject_name  varchar(64),
     subject_code  varchar(32),
     units         float,
     description   clob,
@@ -103,10 +103,10 @@ CREATE TABLE subjects
 CREATE TABLE sections
 (
     id           bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    section_name varchar(48),
-    section_code varchar(48),
+    section_name varchar(64),
+    section_code varchar(64),
     capacity     int    NOT NULL,
-    status      varchar(20) CHECK (status IN ('OPEN', 'CLOSED', 'WAITLIST', 'DISSOLVED')) DEFAULT 'OPEN',
+    status      varchar(16) CHECK (status IN ('OPEN', 'CLOSED', 'WAITLIST', 'DISSOLVED')) DEFAULT 'OPEN',
     updated_at   timestamp default current_timestamp,
     created_at   timestamp default current_timestamp
 );
@@ -135,7 +135,7 @@ CREATE TABLE semester
 (
     id            bigint      NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     curriculum_id bigint      NOT NULL REFERENCES curriculum (id),
-    semester      varchar(24) NOT NULL,
+    semester      varchar(64) NOT NULL,
     year_level int NOT NULL,
     created_at    timestamp default current_timestamp,
     updated_at    timestamp default current_timestamp,
@@ -190,7 +190,7 @@ CREATE TABLE student_semester_progress
     student_id    varchar(32) NOT NULL,
     curriculum_id bigint      NOT NULL,
     semester_id   bigint      NOT NULL,
-    status        varchar(20) CHECK (status IN ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED')) NOT NULL DEFAULT 'NOT_STARTED',
+    status        varchar(16) CHECK (status IN ('NOT_STARTED', 'IN_PROGRESS', 'COMPLETED')) NOT NULL DEFAULT 'NOT_STARTED',
     started_at    timestamp,
     completed_at  timestamp,
     created_at    timestamp default current_timestamp,
@@ -207,7 +207,7 @@ CREATE TABLE rooms
     id         bigint      NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     building varchar(64) NOT NULL,
     room_type varchar(32) NOT NULL CHECK (room_type IN ('LECTURE', 'LAB', 'SEMINAR', 'AUDITORIUM', 'OTHER')),
-    status varchar(32) NOT NULL CHECK (status IN ('AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE')) DEFAULT 'AVAILABLE',
+    status varchar(16) NOT NULL CHECK (status IN ('AVAILABLE', 'UNAVAILABLE', 'MAINTENANCE')) DEFAULT 'AVAILABLE',
     room       varchar(32) NOT NULL,
     capacity   int         NOT NULL,
     created_at timestamp default current_timestamp,
@@ -223,9 +223,9 @@ CREATE TABLE faculty
 (
     id            bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id       bigint,
-    first_name    varchar(128),
-    last_name     varchar(128),
-    middle_name   varchar(48),
+    first_name    varchar(64),
+    last_name     varchar(64),
+    middle_name   varchar(32),
     contact_number varchar(20),
     birthdate     date,
     department_id bigint,
@@ -329,7 +329,7 @@ CREATE TABLE enrollments_details
 CREATE TABLE courses
 (
     id            bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    course_name   varchar(48),
+    course_name   varchar(64),
     description   clob,
     department_id bigint,
     updated_at    timestamp default current_timestamp,
@@ -359,7 +359,7 @@ CREATE TABLE prerequisites
 CREATE TABLE departments
 (
     id              bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    department_name varchar(48),
+    department_name varchar(64),
     department_code varchar(24),
     description     clob,
     updated_at      timestamp default current_timestamp,
