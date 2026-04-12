@@ -24,6 +24,8 @@ The importer is designed for the provided curriculum CSV format with these relev
 - `subject_code`
 - `subject_name`
 - `units`
+- `estimated_time` is automatically set to `90` minutes when the column exists
+- `schedule_pattern` is automatically inferred (lecture/lab/GE/PE/NSTP) when the column exists
 - `prerequisite` (uses only `P-` prerequisite codes)
 - `year`
 - `semester`

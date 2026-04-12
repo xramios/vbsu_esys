@@ -162,6 +162,8 @@ class Subject:
     subject_code: str
     units: float
     department_id: int
+    estimated_time: int = 90
+    schedule_pattern: str = "LECTURE_ONLY"
     description: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

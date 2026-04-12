@@ -23,7 +23,7 @@ The seeder generates data for all tables:
 - `students` - Student profiles and information
 - `faculty` - Faculty member profiles
 - `curriculum` - Academic curriculum entries
-- `subjects` - Course subjects with codes and units
+- `subjects` - Course subjects with codes, units, estimated_time (minutes), and schedule_pattern
 - `sections` - Class sections for subjects
 - `enrollment_period` - Enrollment periods
 - `schedules` - Class schedules with time slots

@@ -276,6 +276,10 @@ class RealCurriculumSeeder:
             unique_subjects.setdefault(row.subject_code, row)
 
         subject_table = self._table("subjects")
+        subject_columns = self._get_table_columns(cursor, "subjects")
+        has_estimated_time = "estimated_time" in subject_columns
+        has_schedule_pattern = "schedule_pattern" in subject_columns
+
         query = f"SELECT id, subject_code FROM {subject_table}"
         cursor.execute(query)
 
@@ -290,26 +294,58 @@ class RealCurriculumSeeder:
         for subject_code, row in unique_subjects.items():
             truncated_name = row.subject_name[: self.subject_name_max_length]
             description = f"{source_label} curriculum subject: {row.subject_name}"
+            estimated_time = 90
+            schedule_pattern = self._resolve_schedule_pattern(subject_code, row.subject_name)
 
             existing_id = existing_by_code.get(subject_code)
             if existing_id is not None:
+                set_clauses = [
+                    f"subject_name = {self._placeholder}",
+                    f"units = {self._placeholder}",
+                ]
+                params: list[Any] = [truncated_name, row.units]
+
+                if has_estimated_time:
+                    set_clauses.append(f"estimated_time = {self._placeholder}")
+                    params.append(estimated_time)
+
+                if has_schedule_pattern:
+                    set_clauses.append(f"schedule_pattern = {self._placeholder}")
+                    params.append(schedule_pattern)
+
+                set_clauses.extend([
+                    f"description = {self._placeholder}",
+                    f"department_id = {self._placeholder}",
+                ])
+                params.extend([description, department_id, existing_id])
+
                 update_query = (
-                    f"UPDATE {subject_table} SET subject_name = {self._placeholder}, "
-                    f"units = {self._placeholder}, description = {self._placeholder}, "
-                    f"department_id = {self._placeholder} WHERE id = {self._placeholder}"
+                    f"UPDATE {subject_table} SET {', '.join(set_clauses)} "
+                    f"WHERE id = {self._placeholder}"
                 )
-                cursor.execute(
-                    update_query,
-                    (truncated_name, row.units, description, department_id, existing_id),
-                )
+                cursor.execute(update_query, tuple(params))
                 subject_id_by_code[subject_code] = existing_id
                 subjects_updated += 1
                 continue
 
+            insert_columns = ["subject_name", "subject_code", "units"]
+            insert_values: list[Any] = [truncated_name, subject_code, row.units]
+
+            if has_estimated_time:
+                insert_columns.append("estimated_time")
+                insert_values.append(estimated_time)
+
+            if has_schedule_pattern:
+                insert_columns.append("schedule_pattern")
+                insert_values.append(schedule_pattern)
+
+            insert_columns.extend(["description", "department_id"])
+            insert_values.extend([description, department_id])
+
             inserted_id = self.db_manager.execute_insert(
                 "subjects",
-                ["subject_name", "subject_code", "units", "description", "department_id"],
-                [truncated_name, subject_code, row.units, description, department_id],
+                insert_columns,
+                insert_values,
                 return_id=True,
                 cursor=cursor,
             )
@@ -320,6 +356,26 @@ class RealCurriculumSeeder:
             subjects_created += 1
 
         return subject_id_by_code, subjects_created, subjects_updated
+
+    def _resolve_schedule_pattern(self, subject_code: str, subject_name: str) -> str:
+        descriptor = f"{subject_code} {subject_name}".upper()
+
+        if descriptor.startswith("STC") or "NSTP" in descriptor or "CIVIC" in descriptor:
+            return "NSTP_BLOCK"
+
+        if descriptor.startswith("PPF") or "PATHFIT" in descriptor or "PHYSICAL" in descriptor:
+            return "PE_PAIRED"
+
+        if descriptor.startswith("ZGE"):
+            return "GE_PAIRED"
+
+        if descriptor.startswith("CCP") or descriptor.startswith("CDS") or descriptor.startswith("CFD"):
+            return "LECTURE_LAB"
+
+        if "LAB" in descriptor or "PRACTICUM" in descriptor:
+            return "LECTURE_LAB"
+
+        return "LECTURE_ONLY"
 
     def _upsert_semester_structure(
         self,

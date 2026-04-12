@@ -50,6 +50,8 @@ class AcademicSeeder(BaseSeeder):
             subject_name VARCHAR(32),
             subject_code VARCHAR(32),
             units FLOAT,
+            estimated_time INT DEFAULT 90,
+            schedule_pattern VARCHAR(32) DEFAULT 'LECTURE_ONLY' CHECK (schedule_pattern IN ('LECTURE_ONLY', 'LECTURE_LAB', 'GE_PAIRED', 'PE_PAIRED', 'NSTP_BLOCK')),
             description CLOB,
             department_id BIGINT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -149,6 +151,27 @@ class AcademicSeeder(BaseSeeder):
         department_code = self._build_department_code(department_name)
         return f"{course_code}{department_code}{year}"
 
+    def _resolve_schedule_pattern(self, subject_code: str, subject_name: str) -> str:
+        """Resolve a deterministic schedule pattern from subject code/name."""
+        descriptor = f"{subject_code} {subject_name}".upper()
+
+        if descriptor.startswith("STC") or "NSTP" in descriptor or "CIVIC" in descriptor:
+            return "NSTP_BLOCK"
+
+        if descriptor.startswith("PPF") or "PATHFIT" in descriptor or "PHYSICAL" in descriptor:
+            return "PE_PAIRED"
+
+        if descriptor.startswith("ZGE"):
+            return "GE_PAIRED"
+
+        if descriptor.startswith("CCP") or descriptor.startswith("CDS") or descriptor.startswith("CFD"):
+            return "LECTURE_LAB"
+
+        if descriptor.startswith("PROG") or descriptor.startswith("DS") or descriptor.startswith("DB"):
+            return "LECTURE_LAB"
+
+        return "LECTURE_ONLY"
+
     def seed_curriculum(self) -> None:
         """Seed curriculum table with course/year curriculum entries."""
         print("Seeding curriculum...")
@@ -226,6 +249,8 @@ class AcademicSeeder(BaseSeeder):
                 subject_name = f"{template[0]} {random.randint(1, 4)}"
                 subject_code = f"{template[1]}{random.randint(100, 999)}"
                 units = template[2]
+                estimated_time = 90
+                schedule_pattern = self._resolve_schedule_pattern(subject_code, subject_name)
                 description = template[3]
 
                 department = random.choice(self.state.departments)
@@ -233,22 +258,22 @@ class AcademicSeeder(BaseSeeder):
                 if self.db_manager.db_type == "derby":
                     query = """
                         INSERT INTO APP.subjects
-                        (subject_name, subject_code, units, description, department_id)
-                        VALUES (?, ?, ?, ?, ?)
+                        (subject_name, subject_code, units, estimated_time, schedule_pattern, description, department_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     """
                     cursor.execute(
                         query,
-                        (subject_name, subject_code, units, description, department.id),
+                        (subject_name, subject_code, units, estimated_time, schedule_pattern, description, department.id),
                     )
                 else:
                     query = """
                         INSERT INTO subjects
-                        (subject_name, subject_code, units, description, department_id)
-                        VALUES (%s, %s, %s, %s, %s)
+                        (subject_name, subject_code, units, estimated_time, schedule_pattern, description, department_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     cursor.execute(
                         query,
-                        (subject_name, subject_code, units, description, department.id),
+                        (subject_name, subject_code, units, estimated_time, schedule_pattern, description, department.id),
                     )
 
                 last_id = self.adapter.get_last_insert_id(cursor, "subjects")
@@ -260,6 +285,8 @@ class AcademicSeeder(BaseSeeder):
                         subject_code=subject_code,
                         units=units,
                         department_id=department.id,
+                        estimated_time=estimated_time,
+                        schedule_pattern=schedule_pattern,
                         description=description,
                     )
                 )
