@@ -95,6 +95,21 @@ public class EnrollmentService {
   }
 
   public boolean createEnrollment(Enrollment enrollment) {
+    if (enrollment == null) {
+      logger.warn("Unable to create enrollment: request is null");
+      return false;
+    }
+
+    if (enrollment.getStudentId() == null || enrollment.getStudentId().isBlank()) {
+      logger.warn("Unable to create enrollment: student ID is required");
+      return false;
+    }
+
+    if (enrollment.getStatus() == null) {
+      logger.warn("Unable to create enrollment: status is required");
+      return false;
+    }
+
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO enrollments (student_id, enrollment_period_id, status, max_units, total_units, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -275,14 +290,16 @@ public class EnrollmentService {
             + ") "
             + "AND NOT EXISTS ("
             + "SELECT 1 "
-            + "FROM enrollments_details ed "
-            + "LEFT JOIN student_enrolled_subjects ses "
-            + "ON ses.enrollment_id = ed.enrollment_id "
-            + "AND ses.offering_id = ed.offering_id "
-            + "AND ses.student_id = enrollments.student_id "
+        + "FROM enrollments_details ed "
             + "WHERE ed.enrollment_id = enrollments.id "
             + "AND ed.status = 'SELECTED' "
-            + "AND (ses.status IS NULL OR ses.status <> 'COMPLETED')"
+        + "AND NOT EXISTS ("
+        + "SELECT 1 "
+        + "FROM student_enrolled_subjects ses "
+        + "WHERE ses.enrollment_id = ed.enrollment_id "
+        + "AND ses.offering_id = ed.offering_id "
+        + "AND ses.status = 'COMPLETED'"
+        + ")"
             + ")");
 
     try (PreparedStatement ps = conn.prepareStatement(sql.toString())) {
