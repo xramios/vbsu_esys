@@ -51,12 +51,18 @@ public class OfferingGenerationService {
 
   public List<OfferingGenerationPlanRow> previewGenerationPlan(
       Long enrollmentPeriodId,
+      Long curriculumId,
+      Integer yearLevel,
       String semesterName,
       boolean onlyActiveSections,
       boolean includeWaitlistSections
   ) {
     List<OfferingGenerationPlanRow> planRows = new ArrayList<>();
-    if (enrollmentPeriodId == null || semesterName == null || semesterName.trim().isEmpty()) {
+    if (enrollmentPeriodId == null
+        || curriculumId == null
+        || yearLevel == null
+        || semesterName == null
+        || semesterName.trim().isEmpty()) {
       return planRows;
     }
 
@@ -66,7 +72,9 @@ public class OfferingGenerationService {
 
       try (PreparedStatement ps = conn.prepareStatement(sql)) {
         ps.setLong(1, enrollmentPeriodId);
-        ps.setString(2, semesterName.trim());
+        ps.setLong(2, curriculumId);
+        ps.setInt(3, yearLevel);
+        ps.setString(4, semesterName.trim());
 
         try (ResultSet rs = ps.executeQuery()) {
           while (rs.next()) {
@@ -94,12 +102,16 @@ public class OfferingGenerationService {
 
   public OfferingGenerationResult generateOfferings(
       Long enrollmentPeriodId,
+      Long curriculumId,
+      Integer yearLevel,
       String semesterName,
       boolean onlyActiveSections,
       boolean includeWaitlistSections
   ) {
     List<OfferingGenerationPlanRow> planRows = previewGenerationPlan(
         enrollmentPeriodId,
+        curriculumId,
+        yearLevel,
         semesterName,
         onlyActiveSections,
         includeWaitlistSections
@@ -226,7 +238,9 @@ public class OfferingGenerationService {
           ON o.subject_id = sub.id
          AND o.section_id = sec.id
          AND o.enrollment_period_id = ?
-        WHERE UPPER(TRIM(sem.semester)) = UPPER(TRIM(?))
+        WHERE sem.curriculum_id = ?
+          AND sem.year_level = ?
+          AND UPPER(TRIM(sem.semester)) = UPPER(TRIM(?))
         """
     );
 
