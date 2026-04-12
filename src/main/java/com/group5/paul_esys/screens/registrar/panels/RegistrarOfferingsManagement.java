@@ -10,6 +10,7 @@ import com.group5.paul_esys.modules.offerings.model.OfferingGenerationResult;
 import com.group5.paul_esys.modules.offerings.services.OfferingGenerationService;
 import com.group5.paul_esys.modules.semester.model.Semester;
 import com.group5.paul_esys.modules.semester.services.SemesterService;
+import java.awt.Dimension;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -597,8 +598,7 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                 lblPotential = new javax.swing.JLabel();
 
                 setBackground(new java.awt.Color(255, 255, 255));
-                setMaximumSize(new java.awt.Dimension(1181, 684));
-                setMinimumSize(new java.awt.Dimension(1181, 684));
+                setPreferredSize(new Dimension(1181, 684));
 
                 jLabel1.setFont(new java.awt.Font("Poppins", 0, 24)); // NOI18N
                 jLabel1.setText("Offerings Management");
@@ -768,7 +768,7 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                         .addGroup(layout.createSequentialGroup()
                                 .addContainerGap()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                      .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                         .addComponent(jLabel1)
                                         .addComponent(jLabel2))
                                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
