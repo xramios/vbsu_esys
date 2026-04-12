@@ -10,7 +10,6 @@ import com.group5.paul_esys.modules.offerings.model.OfferingGenerationResult;
 import com.group5.paul_esys.modules.offerings.services.OfferingGenerationService;
 import com.group5.paul_esys.modules.semester.model.Semester;
 import com.group5.paul_esys.modules.semester.services.SemesterService;
-import java.awt.Dimension;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -598,7 +597,7 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                 lblPotential = new javax.swing.JLabel();
 
                 setBackground(new java.awt.Color(255, 255, 255));
-                setPreferredSize(new Dimension(1181, 684));
+                setPreferredSize(new java.awt.Dimension(1181, 684));
 
                 jLabel1.setFont(new java.awt.Font("Poppins", 0, 24)); // NOI18N
                 jLabel1.setText("Offerings Management");
@@ -707,17 +706,17 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                                                         .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                                        .addComponent(cbxSemester, 0, 188, Short.MAX_VALUE)
-                                                        .addComponent(cbxEnrollmentPeriod, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                                        .addComponent(cbxEnrollmentPeriod, 0, 220, Short.MAX_VALUE)
+                                                        .addComponent(cbxSemester, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                                         .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                         .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                        .addComponent(cbxCurriculum, 0, 149, Short.MAX_VALUE)
+                                                        .addComponent(cbxCurriculum, 0, 242, Short.MAX_VALUE)
                                                         .addComponent(cbxYearLevel, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 40, Short.MAX_VALUE)
                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                                                         .addComponent(chkIncludeWaitlist, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                         .addComponent(chkOnlyActiveSections, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -768,10 +767,10 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                         .addGroup(layout.createSequentialGroup()
                                 .addContainerGap()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                      .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                         .addComponent(jLabel1)
                                         .addComponent(jLabel2))
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                .addContainerGap(48, Short.MAX_VALUE))
                 );
                 layout.setVerticalGroup(
                         layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
