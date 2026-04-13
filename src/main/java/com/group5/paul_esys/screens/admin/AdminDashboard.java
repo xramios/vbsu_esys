@@ -17,7 +17,7 @@ import com.group5.paul_esys.modules.users.services.UserDirectoryService;
 import com.group5.paul_esys.modules.users.services.UserSession;
 import com.group5.paul_esys.screens.registrar.forms.FacultyForm;
 import com.group5.paul_esys.screens.registrar.forms.RegistrarForm;
-import com.group5.paul_esys.screens.registrar.forms.StudentEnrollmentForm;
+import com.group5.paul_esys.screens.registrar.forms.StudentForm;
 import com.group5.paul_esys.screens.registrar.forms.UpdateStudentForm;
 import com.group5.paul_esys.screens.sign_in.SignIn;
 import java.awt.BorderLayout;
@@ -276,7 +276,7 @@ public class AdminDashboard extends javax.swing.JFrame {
         }
 
         private void openStudentFormForCreate() {
-                StudentEnrollmentForm form = new StudentEnrollmentForm(this::reloadUsers);
+                StudentForm form = new StudentForm(this::reloadUsers);
                 form.setVisible(true);
         }
 

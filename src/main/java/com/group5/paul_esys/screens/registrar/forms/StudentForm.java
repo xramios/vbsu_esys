@@ -28,7 +28,7 @@ import raven.datetime.DatePicker;
  *
  * @author janea
  */
-public class StudentEnrollmentForm extends javax.swing.JFrame {
+public class StudentForm extends javax.swing.JFrame {
 
   private final StudentService studentService = StudentService.getInstance();
   private final DepartmentService departmentService = DepartmentService.getInstance();
@@ -44,11 +44,11 @@ public class StudentEnrollmentForm extends javax.swing.JFrame {
   /**
    * Creates new form Enrollment
    */
-  public StudentEnrollmentForm() {
+  public StudentForm() {
     this(null);
   }
 
-  public StudentEnrollmentForm(Runnable onSavedCallback) {
+  public StudentForm(Runnable onSavedCallback) {
     this.onSavedCallback = onSavedCallback;
     FlatMTGitHubIJTheme.setup();
     this.setUndecorated(true);
@@ -428,11 +428,7 @@ public class StudentEnrollmentForm extends javax.swing.JFrame {
                 jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 310, 330, -1));
 
                 txtEmail.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
-    txtEmail.addKeyListener(new java.awt.event.KeyAdapter() {
-      public void keyReleased(java.awt.event.KeyEvent evt) {
-        refreshRegisterButtonState();
-      }
-    });
+                jPanel1.add(txtEmail, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 270, 330, -1));
 
                 jLabel8.setFont(new java.awt.Font("Arial", 0, 10)); // NOI18N
                 jLabel8.setText("Student Type");
@@ -584,7 +580,7 @@ public class StudentEnrollmentForm extends javax.swing.JFrame {
   public static void main(String args[]) {
     /* Create and display the form */
     java.awt.EventQueue.invokeLater(() ->
-      new StudentEnrollmentForm().setVisible(true)
+      new StudentForm().setVisible(true)
     );
   }
 

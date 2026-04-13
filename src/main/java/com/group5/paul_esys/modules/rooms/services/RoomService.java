@@ -32,6 +32,24 @@ public class RoomService {
     return INSTANCE;
   }
 
+  public List<String> getDistinctBuildings() {
+    List<String> buildings = new ArrayList<>();
+    try (Connection conn = ConnectionService.getConnection();
+        PreparedStatement ps = conn.prepareStatement("SELECT DISTINCT building FROM rooms ORDER BY building");
+        ResultSet rs = ps.executeQuery()) {
+      while (rs.next()) {
+        String building = rs.getString("building");
+        if (building != null && !building.trim().isEmpty()) {
+          buildings.add(building.trim());
+        }
+      }
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+    }
+
+    return buildings;
+  }
+
   public List<Room> getAllRooms() {
     List<Room> rooms = new ArrayList<>();
     try (Connection conn = ConnectionService.getConnection();
@@ -163,7 +181,7 @@ public class RoomService {
     try (Connection conn = ConnectionService.getConnection();
         PreparedStatement ps = conn.prepareStatement("DELETE FROM rooms WHERE id = ?")) {
       ps.setLong(1, id);
-      
+
       return ps.executeUpdate() > 0;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);

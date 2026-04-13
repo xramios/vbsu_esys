@@ -245,6 +245,9 @@
             </Property>
             <Property name="text" type="java.lang.String" value="Preview"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnPreviewActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnGenerate">
           <Properties>
@@ -256,6 +259,9 @@
             </Property>
             <Property name="text" type="java.lang.String" value="Generate"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnGenerateActionPerformed"/>
+          </Events>
         </Component>
         <Component class="javax.swing.JButton" name="btnClose">
           <Properties>
@@ -267,6 +273,9 @@
             </Property>
             <Property name="text" type="java.lang.String" value="Close"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnCloseActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>

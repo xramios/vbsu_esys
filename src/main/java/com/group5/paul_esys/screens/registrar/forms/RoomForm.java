@@ -2,6 +2,10 @@ package com.group5.paul_esys.screens.registrar.forms;
 
 import com.group5.paul_esys.modules.rooms.model.Room;
 import com.group5.paul_esys.modules.rooms.services.RoomService;
+
+import java.util.List;
+
+import javax.swing.ComboBoxModel;
 import javax.swing.JOptionPane;
 
 /*
@@ -14,7 +18,7 @@ import javax.swing.JOptionPane;
  * @author janea
  */
 public class RoomForm extends javax.swing.JFrame {
-    
+
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(RoomForm.class.getName());
     private final RoomService roomService = RoomService.getInstance();
     private final Runnable onSavedCallback;
@@ -37,8 +41,8 @@ public class RoomForm extends javax.swing.JFrame {
     }
 
     private void initializeForm() {
-        jComboBox2.setSelectedItem("OTHER");
-        jComboBox1.setSelectedItem("AVAILABLE");
+        cbxRoomType.setSelectedItem("OTHER");
+        cbxRoomStatus.setSelectedItem("AVAILABLE");
 
         if (editingRoom == null) {
             return;
@@ -48,42 +52,41 @@ public class RoomForm extends javax.swing.JFrame {
         jLabel4.setText("Update existing room");
         btnSave.setText("Update");
 
-        txtRoom1.setText(editingRoom.getBuilding());
-        jComboBox2.setSelectedItem(editingRoom.getRoomType());
-        jComboBox1.setSelectedItem(editingRoom.getStatus());
+        List<String> buildings = roomService.getDistinctBuildings();
+        cbxBuilding.setModel(new javax.swing.DefaultComboBoxModel<>(buildings.toArray(new String[0])));
+        cbxBuilding.setSelectedItem(editingRoom.getBuilding());
+        cbxRoomType.setSelectedItem(editingRoom.getRoomType());
+        cbxRoomStatus.setSelectedItem(editingRoom.getStatus());
         txtRoom.setText(editingRoom.getRoom());
         spinnerCapacity.setValue(editingRoom.getCapacity());
     }
 
     private boolean isValidForm() {
-        if (txtRoom1.getText() == null || txtRoom1.getText().trim().isEmpty()) {
+        if (cbxBuilding.getSelectedItem() == null || cbxBuilding.getSelectedItem().toString().trim().isEmpty()) {
             JOptionPane.showMessageDialog(
-                this,
-                "Building is required.",
-                "Validation Error",
-                JOptionPane.WARNING_MESSAGE
-            );
+                    this,
+                    "Building is required.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE);
             return false;
         }
 
         if (txtRoom.getText() == null || txtRoom.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(
-                this,
-                "Room name is required.",
-                "Validation Error",
-                JOptionPane.WARNING_MESSAGE
-            );
+                    this,
+                    "Room name is required.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE);
             return false;
         }
 
         int capacity = (Integer) spinnerCapacity.getValue();
         if (capacity <= 0) {
             JOptionPane.showMessageDialog(
-                this,
-                "Capacity must be greater than 0.",
-                "Validation Error",
-                JOptionPane.WARNING_MESSAGE
-            );
+                    this,
+                    "Capacity must be greater than 0.",
+                    "Validation Error",
+                    JOptionPane.WARNING_MESSAGE);
             return false;
         }
 
@@ -97,34 +100,32 @@ public class RoomForm extends javax.swing.JFrame {
 
         Room room = editingRoom == null ? new Room() : editingRoom;
         room
-            .setBuilding(txtRoom1.getText().trim())
-            .setRoomType(jComboBox2.getSelectedItem() == null ? null : jComboBox2.getSelectedItem().toString())
-            .setStatus(jComboBox1.getSelectedItem() == null ? null : jComboBox1.getSelectedItem().toString())
-            .setRoom(txtRoom.getText().trim())
-            .setCapacity((Integer) spinnerCapacity.getValue());
+                .setBuilding(cbxBuilding.getSelectedItem() == null ? null : cbxBuilding.getSelectedItem().toString())
+                .setRoomType(cbxRoomType.getSelectedItem() == null ? null : cbxRoomType.getSelectedItem().toString())
+                .setStatus(cbxRoomStatus.getSelectedItem() == null ? null : cbxRoomStatus.getSelectedItem().toString())
+                .setRoom(txtRoom.getText().trim())
+                .setCapacity((Integer) spinnerCapacity.getValue());
 
         boolean success = editingRoom == null
-            ? roomService.createRoom(room)
-            : roomService.updateRoom(room);
+                ? roomService.createRoom(room)
+                : roomService.updateRoom(room);
 
         if (!success) {
             JOptionPane.showMessageDialog(
-                this,
-                "Failed to save room. Please try again.",
-                "Save Failed",
-                JOptionPane.ERROR_MESSAGE
-            );
+                    this,
+                    "Failed to save room. Please try again.",
+                    "Save Failed",
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         JOptionPane.showMessageDialog(
-            this,
-            editingRoom == null
-                ? "Room created successfully."
-                : "Room updated successfully.",
-            "Success",
-            JOptionPane.INFORMATION_MESSAGE
-        );
+                this,
+                editingRoom == null
+                        ? "Room created successfully."
+                        : "Room updated successfully.",
+                "Success",
+                JOptionPane.INFORMATION_MESSAGE);
 
         if (onSavedCallback != null) {
             onSavedCallback.run();
@@ -138,150 +139,153 @@ public class RoomForm extends javax.swing.JFrame {
      * WARNING: Do NOT modify this code. The content of this method is always
      * regenerated by the Form Editor.
      */
-        // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-        private void initComponents() {
+    // <editor-fold defaultstate="collapsed" desc="Generated
+    // Code">//GEN-BEGIN:initComponents
+    private void initComponents() {
 
-                windowBar1 = new com.group5.paul_esys.components.WindowBar();
-                jPanel1 = new javax.swing.JPanel();
-                jLabel1 = new javax.swing.JLabel();
-                jLabel2 = new javax.swing.JLabel();
-                jLabel3 = new javax.swing.JLabel();
-                txtRoom = new javax.swing.JTextField();
-                spinnerCapacity = new javax.swing.JSpinner();
-                btnCancel = new javax.swing.JButton();
-                btnSave = new javax.swing.JButton();
-                jLabel4 = new javax.swing.JLabel();
-                txtRoom1 = new javax.swing.JTextField();
-                jLabel5 = new javax.swing.JLabel();
-                jLabel6 = new javax.swing.JLabel();
-                jComboBox1 = new javax.swing.JComboBox<>();
-                jLabel7 = new javax.swing.JLabel();
-                jComboBox2 = new javax.swing.JComboBox<>();
+        windowBar1 = new com.group5.paul_esys.components.WindowBar();
+        jPanel1 = new javax.swing.JPanel();
+        jLabel1 = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
+        txtRoom = new javax.swing.JTextField();
+        spinnerCapacity = new javax.swing.JSpinner();
+        btnCancel = new javax.swing.JButton();
+        btnSave = new javax.swing.JButton();
+        jLabel4 = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
+        jLabel6 = new javax.swing.JLabel();
+        cbxRoomStatus = new javax.swing.JComboBox<>();
+        jLabel7 = new javax.swing.JLabel();
+        cbxRoomType = new javax.swing.JComboBox<>();
+        cbxBuilding = new javax.swing.JComboBox<>();
 
-                setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-                setSize(new java.awt.Dimension(0, 0));
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setSize(new java.awt.Dimension(0, 0));
 
-                windowBar1.setTitle("Room Form");
+        windowBar1.setTitle("Room Form");
 
-                jPanel1.setBackground(new java.awt.Color(255, 255, 255));
-                jPanel1.setPreferredSize(new java.awt.Dimension(432, 82));
-                jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+        jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel1.setPreferredSize(new java.awt.Dimension(432, 82));
+        jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-                jLabel1.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                jLabel1.setText("Room");
-                jPanel1.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 316, -1, -1));
+        jLabel1.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        jLabel1.setText("Room");
+        jPanel1.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 316, -1, -1));
 
-                jLabel2.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                jLabel2.setText("Capacity");
-                jPanel1.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 382, -1, -1));
+        jLabel2.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        jLabel2.setText("Capacity");
+        jPanel1.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 382, -1, -1));
 
-                jLabel3.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
-                jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                jLabel3.setText("Rooms Form");
-                jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 20, 283, -1));
+        jLabel3.setFont(new java.awt.Font("Poppins", 0, 18)); // NOI18N
+        jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel3.setText("Rooms Form");
+        jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 20, 283, -1));
 
-                txtRoom.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                txtRoom.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
-                txtRoom.addActionListener(this::txtRoomActionPerformed);
-                jPanel1.add(txtRoom, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 346, 283, -1));
+        txtRoom.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        txtRoom.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
+        txtRoom.addActionListener(this::txtRoomActionPerformed);
+        jPanel1.add(txtRoom, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 346, 283, -1));
 
-                spinnerCapacity.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                spinnerCapacity.setModel(new javax.swing.SpinnerNumberModel(0, 0, 500, 1));
-                spinnerCapacity.addKeyListener(new java.awt.event.KeyAdapter() {
-                        public void keyReleased(java.awt.event.KeyEvent evt) {
-                                spinnerCapacityKeyReleased(evt);
-                        }
-                });
-                jPanel1.add(spinnerCapacity, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 412, 283, -1));
-
-                btnCancel.setBackground(new java.awt.Color(255, 234, 234));
-                btnCancel.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                btnCancel.setText("Cancel");
-                btnCancel.addActionListener(this::btnCancelActionPerformed);
-                jPanel1.add(btnCancel, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 450, 100, -1));
-
-                btnSave.setBackground(new java.awt.Color(255, 234, 234));
-                btnSave.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                btnSave.setText("Save");
-                btnSave.addActionListener(this::btnSaveActionPerformed);
-                jPanel1.add(btnSave, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 450, 100, -1));
-
-                jLabel4.setForeground(new java.awt.Color(102, 102, 102));
-                jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                jLabel4.setText("Add/Update a room");
-                jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 50, 283, -1));
-
-                txtRoom1.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                txtRoom1.setBorder(new com.group5.paul_esys.ui.TextFieldRoundBorder());
-                txtRoom1.addActionListener(this::txtRoom1ActionPerformed);
-                jPanel1.add(txtRoom1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 120, 283, -1));
-
-                jLabel5.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                jLabel5.setText("Building");
-                jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 90, -1, -1));
-
-                jLabel6.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                jLabel6.setText("Room Status");
-                jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 236, -1, -1));
-
-                jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "AVAILABLE", "UNAVAILABLE", "MAINTENANCE" }));
-                jPanel1.add(jComboBox1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 266, 283, 40));
-
-                jLabel7.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
-                jLabel7.setText("Room Type");
-                jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 156, -1, -1));
-
-                jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "LECTURE", "LAB", "SEMINAR", "AUDITORIUM", "OTHER" }));
-                jPanel1.add(jComboBox2, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 186, 283, 40));
-
-                javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-                getContentPane().setLayout(layout);
-                layout.setHorizontalGroup(
-                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 403, Short.MAX_VALUE)
-                        .addComponent(windowBar1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                );
-                layout.setVerticalGroup(
-                        layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addComponent(windowBar1, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(0, 0, 0)
-                                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 511, javax.swing.GroupLayout.PREFERRED_SIZE))
-                );
-
-                pack();
-        }// </editor-fold>//GEN-END:initComponents
-
-    private void txtRoomActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtRoomActionPerformed
-        // no-op
-    }//GEN-LAST:event_txtRoomActionPerformed
-
-    private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCancelActionPerformed
-        dispose();
-    }//GEN-LAST:event_btnCancelActionPerformed
-
-    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveActionPerformed
-        saveRoom();
-    }//GEN-LAST:event_btnSaveActionPerformed
-
-        private void spinnerCapacityKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_spinnerCapacityKeyReleased
-            if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                saveRoom();
+        spinnerCapacity.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        spinnerCapacity.setModel(new javax.swing.SpinnerNumberModel(0, 0, 500, 1));
+        spinnerCapacity.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyReleased(java.awt.event.KeyEvent evt) {
+                spinnerCapacityKeyReleased(evt);
             }
-        }//GEN-LAST:event_spinnerCapacityKeyReleased
+        });
+        jPanel1.add(spinnerCapacity, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 412, 283, -1));
 
-        private void txtRoom1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtRoom1ActionPerformed
-                // TODO add your handling code here:
-        }//GEN-LAST:event_txtRoom1ActionPerformed
+        btnCancel.setBackground(new java.awt.Color(255, 234, 234));
+        btnCancel.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        btnCancel.setText("Cancel");
+        btnCancel.addActionListener(this::btnCancelActionPerformed);
+        jPanel1.add(btnCancel, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 450, 100, -1));
+
+        btnSave.setBackground(new java.awt.Color(255, 234, 234));
+        btnSave.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        btnSave.setText("Save");
+        btnSave.addActionListener(this::btnSaveActionPerformed);
+        jPanel1.add(btnSave, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 450, 100, -1));
+
+        jLabel4.setForeground(new java.awt.Color(102, 102, 102));
+        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        jLabel4.setText("Add/Update a room");
+        jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 50, 283, -1));
+
+        jLabel5.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        jLabel5.setText("Building");
+        jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 90, -1, -1));
+
+        jLabel6.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        jLabel6.setText("Room Status");
+        jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 236, -1, -1));
+
+        cbxRoomStatus.setModel(
+                new javax.swing.DefaultComboBoxModel<>(new String[] { "AVAILABLE", "UNAVAILABLE", "MAINTENANCE" }));
+        jPanel1.add(cbxRoomStatus, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 266, 283, 40));
+
+        jLabel7.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
+        jLabel7.setText("Room Type");
+        jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 156, -1, -1));
+
+        cbxRoomType.setModel(new javax.swing.DefaultComboBoxModel<>(
+                new String[] { "LECTURE", "LAB", "SEMINAR", "AUDITORIUM", "OTHER" }));
+        jPanel1.add(cbxRoomType, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 186, 283, 40));
+
+        cbxBuilding.setEditable(true);
+        cbxBuilding.setModel(
+                new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel1.add(cbxBuilding, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 120, 280, 30));
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 403, Short.MAX_VALUE)
+                        .addComponent(windowBar1, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE));
+        layout.setVerticalGroup(
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGroup(layout.createSequentialGroup()
+                                .addComponent(windowBar1, javax.swing.GroupLayout.PREFERRED_SIZE, 38,
+                                        javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(0, 0, 0)
+                                .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, 511,
+                                        javax.swing.GroupLayout.PREFERRED_SIZE)));
+
+        pack();
+    }// </editor-fold>//GEN-END:initComponents
+
+    private void txtRoomActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_txtRoomActionPerformed
+        // no-op
+    }// GEN-LAST:event_txtRoomActionPerformed
+
+    private void btnCancelActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnCancelActionPerformed
+        dispose();
+    }// GEN-LAST:event_btnCancelActionPerformed
+
+    private void btnSaveActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnSaveActionPerformed
+        saveRoom();
+    }// GEN-LAST:event_btnSaveActionPerformed
+
+    private void spinnerCapacityKeyReleased(java.awt.event.KeyEvent evt) {// GEN-FIRST:event_spinnerCapacityKeyReleased
+        if (evt.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+            saveRoom();
+        }
+    }// GEN-LAST:event_spinnerCapacityKeyReleased
 
     /**
      * @param args the command line arguments
      */
     public static void main(String args[]) {
         /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+        // <editor-fold defaultstate="collapsed" desc=" Look and feel setting code
+        // (optional) ">
+        /*
+         * If Nimbus (introduced in Java SE 6) is not available, stay with the default
+         * look and feel.
+         * For details see
+         * http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
          */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
@@ -293,28 +297,28 @@ public class RoomForm extends javax.swing.JFrame {
         } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
-        //</editor-fold>
+        // </editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new RoomForm().setVisible(true));
     }
 
-        // Variables declaration - do not modify//GEN-BEGIN:variables
-        private javax.swing.JButton btnCancel;
-        private javax.swing.JButton btnSave;
-        private javax.swing.JComboBox<String> jComboBox1;
-        private javax.swing.JComboBox<String> jComboBox2;
-        private javax.swing.JLabel jLabel1;
-        private javax.swing.JLabel jLabel2;
-        private javax.swing.JLabel jLabel3;
-        private javax.swing.JLabel jLabel4;
-        private javax.swing.JLabel jLabel5;
-        private javax.swing.JLabel jLabel6;
-        private javax.swing.JLabel jLabel7;
-        private javax.swing.JPanel jPanel1;
-        private javax.swing.JSpinner spinnerCapacity;
-        private javax.swing.JTextField txtRoom;
-        private javax.swing.JTextField txtRoom1;
-        private com.group5.paul_esys.components.WindowBar windowBar1;
-        // End of variables declaration//GEN-END:variables
+    // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton btnCancel;
+    private javax.swing.JButton btnSave;
+    private javax.swing.JComboBox<String> cbxBuilding;
+    private javax.swing.JComboBox<String> cbxRoomStatus;
+    private javax.swing.JComboBox<String> cbxRoomType;
+    private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
+    private javax.swing.JLabel jLabel6;
+    private javax.swing.JLabel jLabel7;
+    private javax.swing.JPanel jPanel1;
+    private javax.swing.JSpinner spinnerCapacity;
+    private javax.swing.JTextField txtRoom;
+    private com.group5.paul_esys.components.WindowBar windowBar1;
+    // End of variables declaration//GEN-END:variables
 }
