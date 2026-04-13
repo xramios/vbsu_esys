@@ -8,7 +8,7 @@ import com.group5.paul_esys.modules.courses.model.Course;
 import com.group5.paul_esys.modules.courses.services.CourseService;
 import com.group5.paul_esys.modules.students.model.Student;
 import com.group5.paul_esys.modules.students.services.StudentService;
-import com.group5.paul_esys.screens.registrar.forms.StudentEnrollmentForm;
+import com.group5.paul_esys.screens.registrar.forms.StudentForm;
 import com.group5.paul_esys.screens.registrar.forms.StudentSchedulesForm;
 import com.group5.paul_esys.screens.registrar.forms.UpdateStudentForm;
 import java.util.ArrayList;
@@ -332,14 +332,14 @@ public final class RegistrarStudentManagement extends javax.swing.JPanel {
                                 "Student ID", "First Name", "Last Name", "Course", "Status"
                         }
                 ) {
-                        Class<?>[] types = new Class<?> [] {
+                        Class[] types = new Class [] {
                                 java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
                         };
                         boolean[] canEdit = new boolean [] {
                                 false, false, false, false, false
                         };
 
-                        public Class<?> getColumnClass(int columnIndex) {
+                        public Class getColumnClass(int columnIndex) {
                                 return types [columnIndex];
                         }
 
@@ -347,6 +347,7 @@ public final class RegistrarStudentManagement extends javax.swing.JPanel {
                                 return canEdit [columnIndex];
                         }
                 });
+                tableRegistrarStudents.setComponentPopupMenu(jPopupMenu1);
                 tableRegistrarStudents.addMouseListener(new java.awt.event.MouseAdapter() {
                         public void mouseClicked(java.awt.event.MouseEvent evt) {
                                 tableRegistrarStudentsMouseClicked(evt);
@@ -545,7 +546,7 @@ public final class RegistrarStudentManagement extends javax.swing.JPanel {
         }//GEN-LAST:event_btnRefreshActionPerformed
 
         private void btnAddStudentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAddStudentActionPerformed
-                StudentEnrollmentForm form = new StudentEnrollmentForm(this::initializeStudents);
+                StudentForm form = new StudentForm(this::initializeStudents);
 		form.setVisible(true);
         }//GEN-LAST:event_btnAddStudentActionPerformed
 
