@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor Registrar
+    participant Panel as RegistrarSchedulesManagement
+    participant Dialog as ScheduleGenerationDialog
+    participant Service as RegistrarScheduleManagementService
+    participant DB as Database
+
+    Registrar->>Panel: Open Schedules tab / click Generate
+    Panel->>Dialog: openScheduleGeneratorDialog()
+    Dialog->>Service: load section options
+    Dialog->>Registrar: Show section + time window inputs
+
+    Registrar->>Dialog: Click Preview or Generate
+    alt Preview
+        Dialog->>Service: previewSectionScheduleGeneration(request)
+        Service->>Service: buildSectionScheduleGenerationResult(request, false)
+        Service->>DB: Load offerings, rooms, and existing schedule data
+        Service->>Service: Resolve pattern blocks and find placements
+        Service-->>Dialog: ScheduleGenerationResult(rows, message)
+    else Generate
+        Dialog->>Service: generateSectionSchedules(request)
+        Service->>Service: buildSectionScheduleGenerationResult(request, true)
+        Service->>DB: Load offerings, rooms, and existing schedule data
+        Service->>Service: Resolve pattern blocks and find placements
+        Service->>DB: Validate conflicts again
+        Service->>DB: INSERT INTO schedules for READY rows
+        Service-->>Dialog: ScheduleGenerationResult(rows, createdCount, message)
+        Dialog->>Panel: onGenerationCommitted -> reloadSchedules()
+        Panel->>DB: SELECT schedules
+    end
