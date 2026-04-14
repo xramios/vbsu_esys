@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
-package com.group5.paul_esys.screens.admin;
+package com.group5.paul_esys.screens.admin.forms;
 
 import com.group5.paul_esys.modules.admin.model.Admin;
 import com.group5.paul_esys.modules.admin.services.AdminService;
