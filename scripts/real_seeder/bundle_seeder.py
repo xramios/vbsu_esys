@@ -165,10 +165,11 @@ class BsitNiten2023BundleSeeder:
         reset_actions: list[str] = []
         try:
             print("Starting Derby bundle reset")
+            self._drop_derby_foreign_keys(cursor)
             for table in self.DERBY_TABLES_TO_DROP:
                 try:
                     print(f"Dropping Derby table: {table}")
-                    cursor.execute(f"DROP TABLE {self._table(table)} CASCADE")
+                    cursor.execute(f"DROP TABLE {self._table(table)}")
                     reset_actions.append(f"dropped:{table}")
                 except Exception as error:
                     print(f"Failed to drop Derby table {table}: {error}")
@@ -197,6 +198,38 @@ class BsitNiten2023BundleSeeder:
         finally:
             cursor.close()
             self.db_manager.disconnect()
+
+    def _drop_derby_foreign_keys(self, cursor: Any) -> None:
+        cursor.execute(
+            "SELECT t.TABLENAME, c.CONSTRAINTNAME "
+            "FROM SYS.SYSCONSTRAINTS c "
+            "JOIN SYS.SYSTABLES t ON c.TABLEID = t.TABLEID "
+            "JOIN SYS.SYSSCHEMAS s ON t.SCHEMAID = s.SCHEMAID "
+            "WHERE s.SCHEMANAME = ? AND c.TYPE = 'F' "
+            "ORDER BY t.TABLENAME, c.CONSTRAINTNAME",
+            ("APP",),
+        )
+        foreign_keys = cursor.fetchall()
+
+        for table_name, constraint_name in foreign_keys:
+            table_name_text = str(table_name)
+            constraint_name_text = str(constraint_name)
+            try:
+                print(
+                    "Dropping Derby foreign key constraint: "
+                    f"{table_name_text}.{constraint_name_text}"
+                )
+                cursor.execute(
+                    f"ALTER TABLE {self._table(table_name_text.lower())} "
+                    f"DROP CONSTRAINT {constraint_name_text}"
+                )
+            except Exception as error:
+                print(
+                    "Failed to drop Derby foreign key constraint "
+                    f"{table_name_text}.{constraint_name_text}: {error}"
+                )
+                if not self._is_ignorable_drop_error(error):
+                    raise
 
     def _ensure_schema_ready(self) -> None:
         if not self.db_manager.connect():
