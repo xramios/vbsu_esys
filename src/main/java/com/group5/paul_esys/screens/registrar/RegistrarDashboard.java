@@ -5,6 +5,7 @@ import com.group5.paul_esys.modules.registrar.model.Registrar;
 import com.group5.paul_esys.modules.users.services.UserSession;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarEnrollmentPeriodManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarOfferingsManagement;
+import com.group5.paul_esys.screens.registrar.panels.RegistrarDropRequestsManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarSchedulesManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarSectionsManagement;
 import com.group5.paul_esys.screens.registrar.panels.RegistrarStudentManagement;
@@ -57,6 +58,7 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
         tabbedPaneStudents.add("Offerings", null);
         tabbedPaneStudents.add("Schedules", null);
         tabbedPaneStudents.add("Enrollment Periods", null);
+        tabbedPaneStudents.add("Drop Requests", null);
 
         loadTab(0);
 
@@ -112,6 +114,7 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
             case 3 -> new RegistrarOfferingsManagement();
             case 4 -> new RegistrarSchedulesManagement();
             case 5 -> new RegistrarEnrollmentPeriodManagement();
+            case 6 -> new RegistrarDropRequestsManagement();
             default -> null;
         };
 
