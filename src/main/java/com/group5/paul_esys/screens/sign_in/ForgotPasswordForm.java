@@ -5,6 +5,8 @@
 package com.group5.paul_esys.screens.sign_in;
 
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
+import com.group5.paul_esys.modules.users.services.PasswordResetService;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -14,6 +16,7 @@ public class ForgotPasswordForm extends javax.swing.JFrame {
 
 	private static final java.util.logging.Logger logger = java.util.logging.Logger
 			.getLogger(ForgotPasswordForm.class.getName());
+	private final PasswordResetService resetService = new PasswordResetService();
 
 	/**
 	 * Creates new form ForgotPasswordForm
@@ -134,8 +137,21 @@ public class ForgotPasswordForm extends javax.swing.JFrame {
 	}// GEN-LAST:event_btnCancelActionPerformed
 
 	private void btnRequestActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnRequestActionPerformed
-		VerificationCodeConfirmation confirmForm = new VerificationCodeConfirmation();
-		confirmForm.setVisible(true);
+		String email = txtEmail.getText().trim();
+		if (email.isEmpty()) {
+			JOptionPane.showMessageDialog(this, "Please enter your email address", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+
+		String token = resetService.generateResetToken(email);
+		if (token != null) {
+			JOptionPane.showMessageDialog(this, "Verification code sent to your email (simulated code): " + token, "Forgot Password", JOptionPane.INFORMATION_MESSAGE);
+			VerificationCodeConfirmation confirmForm = new VerificationCodeConfirmation(email);
+			confirmForm.setVisible(true);
+			this.dispose();
+		} else {
+			JOptionPane.showMessageDialog(this, "Email not found in our system", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+		}
 	}// GEN-LAST:event_btnRequestActionPerformed
 
 	/**

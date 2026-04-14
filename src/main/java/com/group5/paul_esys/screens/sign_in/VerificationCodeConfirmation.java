@@ -5,6 +5,9 @@
 package com.group5.paul_esys.screens.sign_in;
 
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
+import com.group5.paul_esys.modules.users.services.PasswordResetService;
+import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 
 /**
  *
@@ -13,14 +16,22 @@ import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJThem
 public class VerificationCodeConfirmation extends javax.swing.JFrame {
 	
 	private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(VerificationCodeConfirmation.class.getName());
+	private final PasswordResetService resetService = new PasswordResetService();
+	private String email;
 
 	/**
 	 * Creates new form VerificationCodeConfirmation
 	 */
-	public VerificationCodeConfirmation() {
+	public VerificationCodeConfirmation(String email) {
         FlatMTGitHubIJTheme.setup();
-
+        this.email = email;
+        this.setUndecorated(true);
         initComponents();
+        this.setLocationRelativeTo(null);
+	}
+
+	public VerificationCodeConfirmation() {
+        this("");
 	}
 
 	/**
@@ -45,6 +56,7 @@ public class VerificationCodeConfirmation extends javax.swing.JFrame {
                 jTextField1.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
                 jTextField1.setHorizontalAlignment(javax.swing.JTextField.CENTER);
 
+                jButton1.addActionListener(this::btnConfirmActionPerformed);
                 jButton1.setText("Confirm");
 
                 jLabel1.setFont(new java.awt.Font("Poppins", 0, 14)); // NOI18N
@@ -96,6 +108,36 @@ public class VerificationCodeConfirmation extends javax.swing.JFrame {
 
                 pack();
         }// </editor-fold>//GEN-END:initComponents
+
+    private void btnConfirmActionPerformed(java.awt.event.ActionEvent evt) {
+        String code = jTextField1.getText().trim();
+        if (code.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter the verification code", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (resetService.validateToken(email, code)) {
+            JPasswordField pf = new JPasswordField();
+            int ok = JOptionPane.showConfirmDialog(this, pf, "Enter New Password", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+            if (ok == JOptionPane.OK_OPTION) {
+                String newPass = new String(pf.getPassword());
+                if (newPass.length() < 6) {
+                    JOptionPane.showMessageDialog(this, "Password must be at least 6 characters", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                if (resetService.resetPassword(email, code, newPass)) {
+                    JOptionPane.showMessageDialog(this, "Password reset successfully. You can now login.", "Forgot Password", JOptionPane.INFORMATION_MESSAGE);
+                    this.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to reset password. Please try again.", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid or expired verification code", "Forgot Password", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
 	/**
 	 * @param args the command line arguments

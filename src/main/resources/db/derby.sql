@@ -43,6 +43,21 @@ CREATE TABLE users
 );
 
 /**
+ * Stores temporary tokens for password reset functionality.
+ * Tokens are linked to a user and have an expiration timestamp.
+ * Used to verify the identity of a user attempting to reset their password via email.
+ */
+CREATE TABLE password_reset_tokens
+(
+    id          bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id     bigint NOT NULL REFERENCES users(id),
+    token       varchar(128) UNIQUE NOT NULL,
+    expires_at  timestamp NOT NULL,
+    created_at  timestamp default current_timestamp,
+    used_at     timestamp
+);
+
+/**
 * Contains administrator information and links to user accounts.
 * Admins have elevated permissions for managing the system.
 * Stores contact information and employee ID for administrative staff.

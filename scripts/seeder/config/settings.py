@@ -61,6 +61,7 @@ TABLES_TO_CLEAR: list[str] = [
     "registrar",
     "students",
     "curriculum",
+    "password_reset_tokens",
     "users",
     "rooms",
     "courses",
