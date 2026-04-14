@@ -39,6 +39,7 @@ class BsitNiten2023BundleSeeder:
         "courses",
         "curriculum",
         "departments",
+        "faculty_student_drop_requests",
         "prerequisites",
         "semester",
         "semester_subjects",
@@ -51,6 +52,7 @@ class BsitNiten2023BundleSeeder:
     TABLES_TO_CLEAR: tuple[str, ...] = (
         "student_semester_progress",
         "student_enrolled_subjects",
+        "faculty_student_drop_requests",
         "enrollments_details",
         "schedules",
         "offerings",
@@ -71,6 +73,7 @@ class BsitNiten2023BundleSeeder:
     DERBY_TABLES_TO_DROP: tuple[str, ...] = (
         "student_semester_progress",
         "student_enrolled_subjects",
+        "faculty_student_drop_requests",
         "enrollments_details",
         "schedules",
         "offerings",

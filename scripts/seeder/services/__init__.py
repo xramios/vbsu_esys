@@ -8,6 +8,7 @@ from seeder.services.room_seeder import RoomSeeder
 from seeder.services.user_seeder import UserSeeder
 from seeder.services.academic_seeder import AcademicSeeder
 from seeder.services.enrollment_seeder import EnrollmentSeeder
+from seeder.services.drop_request_seeder import DropRequestSeeder
 from seeder.services.semester_seeder import SemesterSeeder
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "UserSeeder",
     "AcademicSeeder",
     "EnrollmentSeeder",
+    "DropRequestSeeder",
     "SemesterSeeder",
 ]

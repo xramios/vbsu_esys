@@ -315,6 +315,23 @@ CREATE TABLE IF NOT EXISTS enrollments_details
 );
 
 /**
+ * Tracks requests from faculty to drop a student from an offering.
+ * Registrar staff review and act on these requests.
+ */
+CREATE TABLE IF NOT EXISTS faculty_student_drop_requests
+(
+    id          bigint PRIMARY KEY AUTO_INCREMENT,
+    faculty_id  bigint NOT NULL,
+    student_id  varchar(32) NOT NULL,
+    offering_id bigint NOT NULL,
+    reason      text,
+    status      ENUM ('PENDING', 'APPROVED', 'REJECTED') DEFAULT 'PENDING',
+    created_at  timestamp default current_timestamp(),
+    updated_at  timestamp default current_timestamp(),
+    UNIQUE (student_id, offering_id)
+);
+
+/**
  * Academic programs/degrees offered by the university.
  * Each course belongs to a department and has a descriptive overview.
  * Students are enrolled in a specific course as their primary program.
@@ -487,6 +504,15 @@ ALTER TABLE enrollments_details
 
 ALTER TABLE enrollments_details
     ADD CONSTRAINT fk_ed_offering FOREIGN KEY (offering_id) REFERENCES offerings (id);
+
+ALTER TABLE faculty_student_drop_requests
+    ADD CONSTRAINT fk_drop_requests_faculty FOREIGN KEY (faculty_id) REFERENCES faculty (id);
+
+ALTER TABLE faculty_student_drop_requests
+    ADD CONSTRAINT fk_drop_requests_student FOREIGN KEY (student_id) REFERENCES students (student_id);
+
+ALTER TABLE faculty_student_drop_requests
+    ADD CONSTRAINT fk_drop_requests_offering FOREIGN KEY (offering_id) REFERENCES offerings (id);
 
 ALTER TABLE offerings
     ADD CONSTRAINT fk_offerings_subject FOREIGN KEY (subject_id) REFERENCES subjects (id);

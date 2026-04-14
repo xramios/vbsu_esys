@@ -16,6 +16,7 @@ from seeder.services.room_seeder import RoomSeeder
 from seeder.services.user_seeder import UserSeeder
 from seeder.services.academic_seeder import AcademicSeeder
 from seeder.services.enrollment_seeder import EnrollmentSeeder
+from seeder.services.drop_request_seeder import DropRequestSeeder
 from seeder.services.semester_seeder import SemesterSeeder
 
 
@@ -38,6 +39,7 @@ class SeedingOrchestrator:
         self.user_seeder = UserSeeder(db_manager, self.state)
         self.academic_seeder = AcademicSeeder(db_manager, self.state)
         self.enrollment_seeder = EnrollmentSeeder(db_manager, self.state)
+        self.drop_request_seeder = DropRequestSeeder(db_manager, self.state)
         self.semester_seeder = SemesterSeeder(db_manager, self.state)
 
     def seed_all(self, clear_existing: bool = True) -> bool:
@@ -74,8 +76,9 @@ class SeedingOrchestrator:
             self.enrollment_seeder.seed_schedules()
             self.enrollment_seeder.seed_enrollments()
             self.enrollment_seeder.seed_student_semester_progress()
+            drop_requests_created = self.drop_request_seeder.seed_drop_requests()
 
-            self._print_summary()
+            self._print_summary(drop_requests_created)
             return True
 
         except Exception as e:
@@ -133,7 +136,7 @@ class SeedingOrchestrator:
         cursor.execute(f"DELETE FROM {table}")
         print(f"Cleared table: {table}")
 
-    def _print_summary(self) -> None:
+    def _print_summary(self, drop_requests_created: int = 0) -> None:
         """Print summary of created records."""
         print("\n=== Database Seeding Complete ===")
         print(f"Departments: {len(self.state.departments)}")
@@ -152,3 +155,4 @@ class SeedingOrchestrator:
         print(f"Semester subjects: {len(self.state.semester_subjects)}")
         print(f"Student enrolled subjects: {len(self.state.student_enrolled_subjects)}")
         print(f"Student semester progress: {len(self.state.student_semester_progress)}")
+        print(f"Drop requests: {drop_requests_created}")
