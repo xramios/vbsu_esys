@@ -16,11 +16,9 @@ public final class ThemeManager {
     private static final String DEFAULT_THEME_CLASS_NAME = "com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme";
 
     private static final List<ThemeOption> THEME_OPTIONS = List.of(
-        new ThemeOption("GitHub Light", "com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme"),
-        new ThemeOption("GitHub Dark", "com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubDarkIJTheme"),
         new ThemeOption("Flat Light", "com.formdev.flatlaf.FlatLightLaf"),
-        new ThemeOption("Flat Dark", "com.formdev.flatlaf.FlatDarkLaf"),
-        new ThemeOption("Dracula", "com.formdev.flatlaf.intellijthemes.FlatDraculaIJTheme"),
+        new ThemeOption("IntelliJ Light", "com.formdev.flatlaf.FlatIntelliJLaf"),
+        new ThemeOption("GitHub Light", "com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme"),
         new ThemeOption("Arc", "com.formdev.flatlaf.intellijthemes.FlatArcIJTheme")
     );
 

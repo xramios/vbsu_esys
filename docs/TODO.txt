@@ -16,7 +16,7 @@ Global Task
 
 Student Dashboard
 [ ] Separate records file in StudentDashboard into different files.
-[ ] The max enrollment units depends on the curriculum of the student and the semester. For example, if there is a total of 23 units (all subjects units combined in that semester), the maximum would be 23 units.
+[x] The max enrollment units depends on the curriculum of the student and the semester. For example, if there is a total of 23 units (all subjects units combined in that semester), the maximum would be 23 units.
 
 Registrar Dashboard
 [x] Implement lazy loading per tab.

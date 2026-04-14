@@ -125,6 +125,44 @@ public class StudentEnrollmentEligibilityService {
     }
   }
 
+  public float getCurrentSemesterUnitLimit(String studentId, String enrollmentSemesterLabel, Long enrollmentYearLevel) {
+    if (studentId == null || studentId.isBlank()) {
+      return 0.0f;
+    }
+
+    try (Connection conn = ConnectionService.getConnection()) {
+      Optional<Long> curriculumIdOpt = resolveCurriculumId(conn, studentId);
+      if (curriculumIdOpt.isEmpty()) {
+        return 0.0f;
+      }
+
+      Map<Long, String> semesterLabelById = new HashMap<>();
+      Map<Long, Integer> yearLevelBySemesterId = new HashMap<>();
+      List<Long> orderedSemesterIds = getOrderedSemesterIdsByCurriculum(conn, curriculumIdOpt.get(), semesterLabelById, yearLevelBySemesterId);
+      if (orderedSemesterIds.isEmpty()) {
+        return 0.0f;
+      }
+
+      Integer currentSemesterIndex = findCurrentSemesterIndex(
+          orderedSemesterIds,
+          semesterLabelById,
+          yearLevelBySemesterId,
+          enrollmentSemesterLabel,
+          enrollmentYearLevel
+      );
+
+      if (currentSemesterIndex == null || currentSemesterIndex < 0 || currentSemesterIndex >= orderedSemesterIds.size()) {
+        return 0.0f;
+      }
+
+      Long currentSemesterId = orderedSemesterIds.get(currentSemesterIndex);
+      return sumSemesterUnits(conn, currentSemesterId);
+    } catch (SQLException e) {
+      logger.error("ERROR: " + e.getMessage(), e);
+      return 0.0f;
+    }
+  }
+
   private Optional<Long> resolveCurriculumId(Connection conn, String studentId) throws SQLException {
     String studentSql = "SELECT curriculum_id, course_id FROM students WHERE student_id = ?";
 
@@ -633,5 +671,24 @@ public class StudentEnrollmentEligibilityService {
     }
 
     return 0;
+  }
+
+  private float sumSemesterUnits(Connection conn, Long semesterId) throws SQLException {
+    String sql =
+        "SELECT COALESCE(SUM(COALESCE(s.units, 0)), 0) AS total_units "
+            + "FROM semester_subjects ss "
+            + "JOIN subjects s ON s.id = ss.subject_id "
+            + "WHERE ss.semester_id = ?";
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setLong(1, semesterId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return rs.getFloat("total_units");
+        }
+      }
+    }
+
+    return 0.0f;
   }
 }

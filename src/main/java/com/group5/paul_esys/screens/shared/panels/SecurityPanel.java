@@ -1,5 +1,9 @@
 package com.group5.paul_esys.screens.shared.panels;
 
+import com.group5.paul_esys.modules.admin.model.Admin;
+import com.group5.paul_esys.modules.faculty.model.Faculty;
+import com.group5.paul_esys.modules.registrar.model.Registrar;
+import com.group5.paul_esys.modules.students.model.Student;
 import com.group5.paul_esys.modules.users.models.user.UserInformation;
 import com.group5.paul_esys.modules.users.services.AccountSecurityService;
 import com.group5.paul_esys.modules.users.services.UserSession;
@@ -33,7 +37,22 @@ public class SecurityPanel extends javax.swing.JPanel {
 
     private JButton btnApplyTheme;
     private JButton btnChangePassword;
+    private JPanel accountPanel;
     private JComboBox<ThemeOption> cmbTheme;
+    private JPanel fillerPanel;
+    private JLabel lblAccountId;
+    private JLabel lblAccountIdValue;
+    private JLabel lblAccountName;
+    private JLabel lblAccountNameValue;
+    private JLabel lblAccountRole;
+    private JLabel lblAccountRoleValue;
+    private JLabel lblAccountEmail;
+    private JLabel lblAccountEmailValue;
+    private JLabel lblAccountIdentifier;
+    private JLabel lblAccountIdentifierValue;
+    private JLabel lblAccountContact;
+    private JLabel lblAccountContactValue;
+    private JLabel lblAccountSection;
     private JLabel lblChangePassword;
     private JLabel lblCurrentPassword;
     private JLabel lblNewPassword;
@@ -55,8 +74,109 @@ public class SecurityPanel extends javax.swing.JPanel {
     }
 
     private void initializePanel() {
+        loadUserInformation();
         bindActions();
         loadThemeOptions();
+    }
+
+    private void loadUserInformation() {
+        UserInformation<?> userInformation = UserSession.getInstance().getUserInformation();
+        if (userInformation == null) {
+            return;
+        }
+
+        lblAccountIdValue.setText(valueOrFallback(userInformation.getId() == null ? null : String.valueOf(userInformation.getId())));
+        lblAccountRoleValue.setText(resolveRoleDisplayName(userInformation.getUser()));
+        lblAccountNameValue.setText(resolveFullName(userInformation.getUser()));
+        lblAccountEmailValue.setText(valueOrFallback(userInformation.getEmail()));
+        lblAccountIdentifierValue.setText(resolveIdentifier(userInformation.getUser()));
+        lblAccountContactValue.setText(resolveContactNumber(userInformation.getUser()));
+    }
+
+    private String resolveRoleDisplayName(Object user) {
+        if (user instanceof Student) {
+            return "Student";
+        }
+        if (user instanceof Registrar) {
+            return "Registrar";
+        }
+        if (user instanceof Faculty) {
+            return "Faculty";
+        }
+        if (user instanceof Admin) {
+            return "Admin";
+        }
+        return "-";
+    }
+
+    private String resolveFullName(Object user) {
+        if (user instanceof Student student) {
+            return formatName(student.getFirstName(), student.getMiddleName(), student.getLastName());
+        }
+        if (user instanceof Registrar registrar) {
+            return formatName(registrar.getFirstName(), null, registrar.getLastName());
+        }
+        if (user instanceof Faculty faculty) {
+            return formatName(faculty.getFirstName(), faculty.getMiddleName(), faculty.getLastName());
+        }
+        if (user instanceof Admin admin) {
+            return formatName(admin.getFirstName(), null, admin.getLastName());
+        }
+        return "-";
+    }
+
+    private String resolveIdentifier(Object user) {
+        if (user instanceof Student student) {
+            return valueOrFallback(student.getStudentId());
+        }
+        if (user instanceof Registrar registrar) {
+            return valueOrFallback(registrar.getEmployeeId());
+        }
+        return "-";
+    }
+
+    private String resolveContactNumber(Object user) {
+        if (user instanceof Registrar registrar) {
+            return valueOrFallback(registrar.getContactNumber());
+        }
+        if (user instanceof Faculty faculty) {
+            return valueOrFallback(faculty.getContactNumber());
+        }
+        if (user instanceof Admin admin) {
+            return valueOrFallback(admin.getContactNumber());
+        }
+        return "-";
+    }
+
+    private String formatName(String firstName, String middleName, String lastName) {
+        StringBuilder builder = new StringBuilder();
+
+        if (firstName != null && !firstName.isBlank()) {
+            builder.append(firstName.trim());
+        }
+
+        if (middleName != null && !middleName.isBlank()) {
+            if (!builder.isEmpty()) {
+                builder.append(" ");
+            }
+            builder.append(middleName.trim());
+        }
+
+        if (lastName != null && !lastName.isBlank()) {
+            if (!builder.isEmpty()) {
+                builder.append(" ");
+            }
+            builder.append(lastName.trim());
+        }
+
+        return valueOrFallback(builder.toString());
+    }
+
+    private String valueOrFallback(String value) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+        return value.trim();
     }
 
     private void bindActions() {
@@ -227,10 +347,31 @@ public class SecurityPanel extends javax.swing.JPanel {
         txtConfirmPassword.setText("");
     }
 
+    /**
+     * This method is called from within the constructor to initialize the form.
+     * WARNING: Do NOT modify this code. The content of this method is always
+     * regenerated by the Form Editor.
+     */
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
         rootPanel = new JPanel(new BorderLayout());
         contentPanel = new JPanel(new GridBagLayout());
         scrollPane = new JScrollPane(contentPanel);
+
+        accountPanel = new JPanel(new GridBagLayout());
+        lblAccountSection = new JLabel("Account Information");
+        lblAccountId = new JLabel("Account ID");
+        lblAccountIdValue = new JLabel("-");
+        lblAccountRole = new JLabel("Role");
+        lblAccountRoleValue = new JLabel("-");
+        lblAccountName = new JLabel("Full Name");
+        lblAccountNameValue = new JLabel("-");
+        lblAccountEmail = new JLabel("Email");
+        lblAccountEmailValue = new JLabel("-");
+        lblAccountIdentifier = new JLabel("School Identifier");
+        lblAccountIdentifierValue = new JLabel("-");
+        lblAccountContact = new JLabel("Contact Number");
+        lblAccountContactValue = new JLabel("-");
 
         passwordPanel = new JPanel(new GridBagLayout());
         lblChangePassword = new JLabel("Change Password");
@@ -243,10 +384,11 @@ public class SecurityPanel extends javax.swing.JPanel {
         btnChangePassword = new JButton("Update Password");
 
         themePanel = new JPanel(new GridBagLayout());
-        lblThemeSection = new JLabel("Application Theme");
-        lblTheme = new JLabel("Theme");
+        lblThemeSection = new JLabel("Theme Settings (Light Mode)");
+        lblTheme = new JLabel("Theme Preset");
         cmbTheme = new JComboBox<>();
         btnApplyTheme = new JButton("Apply Theme");
+        fillerPanel = new JPanel();
 
         setLayout(new BorderLayout());
         setBackground(new java.awt.Color(255, 255, 255));
@@ -257,6 +399,7 @@ public class SecurityPanel extends javax.swing.JPanel {
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
+        lblAccountSection.setFont(new Font("Poppins", Font.BOLD, 20));
         lblChangePassword.setFont(new Font("Poppins", Font.BOLD, 20));
         lblThemeSection.setFont(new Font("Poppins", Font.BOLD, 20));
 
@@ -273,6 +416,17 @@ public class SecurityPanel extends javax.swing.JPanel {
         btnChangePassword.putClientProperty("JButton.buttonType", "roundRect");
         btnApplyTheme.putClientProperty("JButton.buttonType", "roundRect");
 
+        lblAccountIdValue.setFont(new Font("Poppins", Font.BOLD, 14));
+        lblAccountRoleValue.setFont(new Font("Poppins", Font.BOLD, 14));
+        lblAccountNameValue.setFont(new Font("Poppins", Font.BOLD, 14));
+        lblAccountEmailValue.setFont(new Font("Poppins", Font.BOLD, 14));
+        lblAccountIdentifierValue.setFont(new Font("Poppins", Font.BOLD, 14));
+        lblAccountContactValue.setFont(new Font("Poppins", Font.BOLD, 14));
+
+        accountPanel.setBorder(new PanelRoundBorder());
+        accountPanel.setBackground(new java.awt.Color(255, 255, 255));
+        accountPanel.setOpaque(true);
+
         passwordPanel.setBorder(new PanelRoundBorder());
         passwordPanel.setBackground(new java.awt.Color(255, 255, 255));
         passwordPanel.setOpaque(true);
@@ -280,6 +434,58 @@ public class SecurityPanel extends javax.swing.JPanel {
         themePanel.setBorder(new PanelRoundBorder());
         themePanel.setBackground(new java.awt.Color(255, 255, 255));
         themePanel.setOpaque(true);
+
+        GridBagConstraints accountGbc = new GridBagConstraints();
+        accountGbc.insets = new Insets(8, 12, 8, 12);
+        accountGbc.fill = GridBagConstraints.HORIZONTAL;
+        accountGbc.anchor = GridBagConstraints.NORTHWEST;
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 0;
+        accountGbc.gridwidth = 2;
+        accountPanel.add(lblAccountSection, accountGbc);
+
+        accountGbc.gridy = 1;
+        accountGbc.gridwidth = 1;
+        accountPanel.add(lblAccountId, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountIdValue, accountGbc);
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 2;
+        accountPanel.add(lblAccountRole, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountRoleValue, accountGbc);
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 3;
+        accountPanel.add(lblAccountName, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountNameValue, accountGbc);
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 4;
+        accountPanel.add(lblAccountEmail, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountEmailValue, accountGbc);
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 5;
+        accountPanel.add(lblAccountIdentifier, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountIdentifierValue, accountGbc);
+
+        accountGbc.gridx = 0;
+        accountGbc.gridy = 6;
+        accountPanel.add(lblAccountContact, accountGbc);
+
+        accountGbc.gridx = 1;
+        accountPanel.add(lblAccountContactValue, accountGbc);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(8, 12, 8, 12);
@@ -349,18 +555,23 @@ public class SecurityPanel extends javax.swing.JPanel {
         contentGbc.weightx = 1.0;
         contentGbc.fill = GridBagConstraints.HORIZONTAL;
         contentGbc.insets = new Insets(0, 0, 16, 0);
-        contentPanel.add(passwordPanel, contentGbc);
+        contentPanel.add(accountPanel, contentGbc);
 
         contentGbc.gridy = 1;
+        contentGbc.insets = new Insets(0, 0, 16, 0);
+        contentPanel.add(passwordPanel, contentGbc);
+
+        contentGbc.gridy = 2;
         contentGbc.insets = new Insets(0, 0, 0, 0);
         contentPanel.add(themePanel, contentGbc);
 
-        contentGbc.gridy = 2;
+        contentGbc.gridy = 3;
         contentGbc.weighty = 1.0;
         contentGbc.fill = GridBagConstraints.BOTH;
-        contentPanel.add(new JPanel(), contentGbc);
+        contentPanel.add(fillerPanel, contentGbc);
 
         rootPanel.add(scrollPane, BorderLayout.CENTER);
         add(rootPanel, BorderLayout.CENTER);
     }
+    // </editor-fold>//GEN-END:initComponents
 }
