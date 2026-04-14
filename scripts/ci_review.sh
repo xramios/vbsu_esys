@@ -83,13 +83,25 @@ if [ $FOUND -ne 0 ]; then
     OWNER_REPO=$(echo "$REMOTE_URL" | sed -e 's#.*github.com[:/]##' -e 's/\.git$//')
     echo "Creating GitHub issue on $OWNER_REPO"
     API_URL="https://api.github.com/repos/$OWNER_REPO/issues"
-    BODY=$(jq -Rs --arg f "$ISSUE_TITLE" '{title:$f, body: input}' < "$REPORT_FILE")
-    curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -d "$BODY" "$API_URL" > /tmp/gh_issue.out || true
-    if grep -q '"html_url"' /tmp/gh_issue.out 2>/dev/null; then
-      echo "GitHub issue created: " $(jq -r '.html_url' /tmp/gh_issue.out) >> "$REPORT_FILE"
+    # Build JSON payload using python to avoid jq portability issues
+    python3 - <<PY > /tmp/gh_issue.out
+import json
+with open(r"""$REPORT_FILE""","r",encoding="utf-8") as f:
+    body = f.read()
+print(json.dumps({"title": "$ISSUE_TITLE", "body": body}))
+PY
+    HTTP_STATUS=$(curl -s -o /tmp/gh_response.out -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/json" -d @/tmp/gh_issue.out "$API_URL" || echo "000")
+    if [ "$HTTP_STATUS" = "201" ]; then
+      if grep -q '"html_url"' /tmp/gh_response.out 2>/dev/null; then
+        html=$(python3 -c "import json
+print(json.load(open('/tmp/gh_response.out'))['html_url'])")
+        echo "GitHub issue created: $html" >> "$REPORT_FILE"
+      else
+        echo "GitHub issue created but response parsing failed." >> "$REPORT_FILE"
+      fi
     else
-      echo "Failed to create GitHub issue. Response:" >> "$REPORT_FILE"
-      sed -n '1,200p' /tmp/gh_issue.out >> "$REPORT_FILE"
+      echo "Failed to create GitHub issue. HTTP status: $HTTP_STATUS" >> "$REPORT_FILE"
+      sed -n '1,200p' /tmp/gh_response.out >> "$REPORT_FILE"
     fi
   else
     echo "No GITHUB_TOKEN or remote not GitHub — saved local report only." >> "$REPORT_FILE"
