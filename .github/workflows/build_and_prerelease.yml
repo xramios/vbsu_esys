@@ -38,22 +38,14 @@ jobs:
           fi
           echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub prerelease
+      - name: Create GitHub prerelease and upload JAR (gh CLI)
         id: create_pr
-        uses: actions/create-release@v4
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          release_name: ${{ steps.tag.outputs.tag }}
-          draft: false
-          prerelease: true
+        run: |
+          TAG=${{ steps.tag.outputs.tag }}
+          echo "Creating prerelease $TAG"
+          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          # create release and upload jar
+          gh release create "$TAG" target/*.jar --prerelease --title "$TAG" --notes "Automated prerelease from CI (snapshot)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload jar artifact
-        uses: actions/upload-release-asset@v2
-        with:
-          upload_url: ${{ steps.create_pr.outputs.upload_url }}
-          asset_path: $(ls target/*.jar | head -n 1)
-          asset_name: $(basename $(ls target/*.jar | head -n 1))
-          asset_content_type: application/java-archive
 
