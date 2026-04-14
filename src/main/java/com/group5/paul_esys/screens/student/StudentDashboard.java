@@ -108,6 +108,19 @@ public class StudentDashboard extends javax.swing.JFrame {
 			return String.class;
 		}
 	};
+	private final DefaultTableModel droppedSubjectsModel = new DefaultTableModel(
+			new Object[][] {},
+			new String[] { "Code", "Subject", "Units", "Semester", "Dropped At" }) {
+		@Override
+		public boolean isCellEditable(int row, int column) {
+			return false;
+		}
+
+		@Override
+		public Class<?> getColumnClass(int columnIndex) {
+			return String.class;
+		}
+	};
 	private boolean hasActiveEnrollmentPeriod;
 	private float currentMaxEnrollmentUnits = DEFAULT_MAX_ENROLLMENT_UNITS;
 	private int activeBackgroundTasks;
@@ -128,6 +141,12 @@ public class StudentDashboard extends javax.swing.JFrame {
 	}
 
 	private record CompletedSubjectsSnapshot(
+			String summaryText,
+			List<Object[]> rows) {
+
+	}
+
+	private record DroppedSubjectsSnapshot(
 			String summaryText,
 			List<Object[]> rows) {
 
@@ -185,6 +204,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		loadMySchedule();
 		loadSemesterProgress();
 		loadCompletedSubjects();
+		loadDroppedSubjects();
 	}
 
 	private void beginBackgroundTask() {
@@ -489,6 +509,135 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 		if (tabbedPane.indexOfComponent(panelCompletedSubjects) == -1) {
 			tabbedPane.addTab("Completed Subjects", panelCompletedSubjects);
+		}
+		configureDroppedSubjectsTab();
+	}
+
+	private void configureDroppedSubjectsTab() {
+		JPanel panelDroppedSubjects = new JPanel(new BorderLayout(0, 16));
+		panelDroppedSubjects.setBackground(Color.WHITE);
+		panelDroppedSubjects.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+		JLabel lblTitle = new JLabel("Dropped Subjects");
+		lblTitle.setFont(new Font("Poppins", Font.BOLD, 22));
+
+		JLabel lblSubtitle = new JLabel("Subjects that were dropped from your previous enrollments.");
+		lblSubtitle.setFont(new Font("Poppins", Font.PLAIN, 12));
+		lblSubtitle.setForeground(new Color(120, 120, 120));
+
+		JPanel headerPanel = new JPanel(new BorderLayout());
+		headerPanel.setOpaque(false);
+		headerPanel.add(lblTitle, BorderLayout.NORTH);
+		headerPanel.add(lblSubtitle, BorderLayout.CENTER);
+
+		JTable tableDroppedSubjects = new JTable(droppedSubjectsModel);
+		tableDroppedSubjects.setFont(new Font("Poppins", Font.PLAIN, 14));
+		tableDroppedSubjects.setRowHeight(26);
+		tableDroppedSubjects.setFillsViewportHeight(true);
+		tableDroppedSubjects.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+		JScrollPane droppedSubjectsScrollPane = new JScrollPane(tableDroppedSubjects);
+		droppedSubjectsScrollPane.setBorder(BorderFactory.createLineBorder(new Color(225, 225, 225)));
+
+		panelDroppedSubjects.add(headerPanel, BorderLayout.NORTH);
+		panelDroppedSubjects.add(droppedSubjectsScrollPane, BorderLayout.CENTER);
+
+		if (tabbedPane.indexOfComponent(panelDroppedSubjects) == -1) {
+			tabbedPane.addTab("Dropped", panelDroppedSubjects);
+		}
+	}
+
+	private void loadDroppedSubjects() {
+		executeDatabaseTask(
+				this::fetchDroppedSubjectsSnapshot,
+				this::applyDroppedSubjectsSnapshot,
+				"Failed to load dropped subjects.");
+	}
+
+	private DroppedSubjectsSnapshot fetchDroppedSubjectsSnapshot() {
+		List<Object[]> rows = new ArrayList<>();
+		if (currentStudent == null || currentStudent.getStudentId() == null || currentStudent.getStudentId().isBlank()) {
+			return new DroppedSubjectsSnapshot("No student profile is available.", rows);
+		}
+
+		List<StudentEnrolledSubject> droppedSubjects = studentEnrolledSubjectService
+				.getByStudent(currentStudent.getStudentId())
+				.stream()
+				.filter(subject -> subject.getStatus() == StudentEnrolledSubjectStatus.DROPPED)
+				.toList();
+
+		if (droppedSubjects.isEmpty()) {
+			return new DroppedSubjectsSnapshot("No dropped subjects recorded.", rows);
+		}
+
+		Map<Long, Semester> semesterById = new HashMap<>();
+		if (currentStudent.getCurriculumId() != null) {
+			for (Semester semester : semesterService.getSemestersByCurriculum(currentStudent.getCurriculumId())) {
+				if (semester.getId() != null) {
+					semesterById.put(semester.getId(), semester);
+				}
+			}
+		}
+
+		Map<Long, SemesterSubject> semesterSubjectCache = new HashMap<>();
+		Map<Long, Subject> subjectCache = new HashMap<>();
+
+		for (StudentEnrolledSubject droppedSubject : droppedSubjects) {
+			SemesterSubject semesterSubject = null;
+			if (droppedSubject.getSemesterSubjectId() != null) {
+				semesterSubject = semesterSubjectCache.computeIfAbsent(
+						droppedSubject.getSemesterSubjectId(),
+						id -> semesterSubjectService.getSemesterSubjectById(id).orElse(null));
+			}
+
+			Semester semester = null;
+			if (semesterSubject != null && semesterSubject.getSemesterId() != null) {
+				semester = semesterById.get(semesterSubject.getSemesterId());
+				if (semester == null) {
+					semester = semesterService.getSemesterById(semesterSubject.getSemesterId()).orElse(null);
+				}
+			}
+
+			Subject subject = null;
+			if (semesterSubject != null && semesterSubject.getSubjectId() != null) {
+				subject = subjectCache.computeIfAbsent(
+						semesterSubject.getSubjectId(),
+						id -> SubjectService.getInstance().getSubjectById(id).orElse(null));
+			}
+
+			rows.add(buildDroppedSubjectRow(droppedSubject, semesterSubject, semester, subject));
+		}
+
+		return new DroppedSubjectsSnapshot("Dropped subjects: " + rows.size(), rows);
+	}
+
+	private Object[] buildDroppedSubjectRow(
+			StudentEnrolledSubject droppedSubject,
+			SemesterSubject semesterSubject,
+			Semester semester,
+			Subject subject) {
+		String subjectCode = subject == null ? "N/A" : safeText(subject.getSubjectCode(), "N/A");
+		String subjectName = subject == null ? "N/A" : safeText(subject.getSubjectName(), "N/A");
+		String units = subject == null ? formatUnits(0.0f)
+				: formatUnits(subject.getUnits() == null ? 0.0f : subject.getUnits());
+		Long semesterId = semesterSubject == null ? null : semesterSubject.getSemesterId();
+		String semesterLabel = buildSemesterLabel(semester, semesterId);
+		Timestamp droppedAt = droppedSubject.getUpdatedAt() != null ? droppedSubject.getUpdatedAt()
+				: droppedSubject.getCreatedAt();
+
+		return new Object[] {
+				subjectCode,
+				subjectName,
+				units,
+				semesterLabel,
+				formatTimestamp(droppedAt)
+		};
+	}
+
+	private void applyDroppedSubjectsSnapshot(DroppedSubjectsSnapshot snapshot) {
+		droppedSubjectsModel.setRowCount(0);
+		for (Object[] row : snapshot.rows()) {
+			droppedSubjectsModel.addRow(row);
 		}
 	}
 

@@ -636,7 +636,7 @@ public class StudentEnrollmentEligibilityService {
         "SELECT COUNT(*) AS total "
             + "FROM student_enrolled_subjects ses "
             + "JOIN semester_subjects ss ON ss.id = ses.semester_subject_id "
-            + "WHERE ses.student_id = ? AND ss.semester_id = ?";
+            + "WHERE ses.student_id = ? AND ss.semester_id = ? AND ses.status IN ('ENROLLED', 'COMPLETED')";
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setString(1, studentId);
