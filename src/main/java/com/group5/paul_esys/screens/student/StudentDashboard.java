@@ -2316,7 +2316,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 	}
 
 	private void btnSubmitScheduleActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnSubmitScheduleActionPerformed
-		persistSelectedSchedule(EnrollmentStatus.SUBMITTED);
+		persistSelectedSchedule(EnrollmentStatus.ENROLLED);
 	}// GEN-LAST:event_btnSubmitScheduleActionPerformed
 
 	private void btnSaveDraftActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_btnSaveDraftActionPerformed
@@ -2325,7 +2325,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 	private void persistSelectedSchedule(EnrollmentStatus targetStatus) {
 		if (!hasActiveEnrollmentPeriod) {
-			String actionLabel = targetStatus == EnrollmentStatus.SUBMITTED ? "submission" : "saving a draft";
+			String actionLabel = targetStatus == EnrollmentStatus.ENROLLED ? "submission" : "saving a draft";
 			JOptionPane.showMessageDialog(
 					this,
 					"Enrollment is closed. You can preview offerings, but " + actionLabel
@@ -2338,7 +2338,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		DefaultTableModel catalogModel = (DefaultTableModel) tblSubjectCatalog.getModel();
 		List<Integer> selectedRows = getCheckedCatalogModelRows(catalogModel);
 		if (selectedRows.isEmpty()) {
-			String actionLabel = targetStatus == EnrollmentStatus.SUBMITTED ? "submit" : "save as draft";
+			String actionLabel = targetStatus == EnrollmentStatus.ENROLLED ? "submit" : "save as draft";
 			JOptionPane.showMessageDialog(this, "Please select offerings to " + actionLabel + ".", "Error",
 					JOptionPane.ERROR_MESSAGE);
 			return;
@@ -2676,7 +2676,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		activeEnrollment.setStatus(targetStatus);
 		activeEnrollment.setMaxUnits(maxEnrollmentUnits);
 		activeEnrollment.setTotalUnits(sumSelectedUnits(activeEnrollment.getId()));
-		if (targetStatus == EnrollmentStatus.SUBMITTED) {
+		if (targetStatus == EnrollmentStatus.ENROLLED) {
 			if (activeEnrollment.getSubmittedAt() == null) {
 				activeEnrollment.setSubmittedAt(new Date());
 			}
@@ -2689,7 +2689,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 			return;
 		}
 
-		String successMessage = targetStatus == EnrollmentStatus.SUBMITTED
+		String successMessage = targetStatus == EnrollmentStatus.ENROLLED
 				? "Enrollment submitted successfully."
 				: "Draft saved successfully.";
 		JOptionPane.showMessageDialog(this, successMessage, "Success", JOptionPane.INFORMATION_MESSAGE);
@@ -2818,7 +2818,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		enrollment.setStatus(initialStatus);
 		enrollment.setMaxUnits(maxEnrollmentUnits);
 		enrollment.setTotalUnits(0.0f);
-		if (initialStatus == EnrollmentStatus.SUBMITTED) {
+		if (initialStatus == EnrollmentStatus.ENROLLED) {
 			enrollment.setSubmittedAt(new Date());
 		} else {
 			enrollment.setSubmittedAt(null);
