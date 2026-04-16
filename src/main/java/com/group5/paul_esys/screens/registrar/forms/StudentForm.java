@@ -12,6 +12,7 @@ import com.group5.paul_esys.modules.curriculum.model.Curriculum;
 import com.group5.paul_esys.modules.curriculum.services.CurriculumService;
 import com.group5.paul_esys.modules.departments.model.Department;
 import com.group5.paul_esys.modules.departments.services.DepartmentService;
+import com.group5.paul_esys.modules.enrollment_period.services.EnrollmentPeriodService;
 import com.group5.paul_esys.modules.students.model.Student;
 import com.group5.paul_esys.modules.students.model.StudentStatus;
 import com.group5.paul_esys.modules.students.services.StudentService;
@@ -227,6 +228,16 @@ public class StudentForm extends javax.swing.JFrame {
   }
 
   private void registerStudent() {
+    if (EnrollmentPeriodService.getInstance().getCurrentEnrollmentPeriod().isPresent()) {
+      JOptionPane.showMessageDialog(
+          this,
+          "Action blocked: An enrollment period is currently active. Please wait until it closes before enrolling a new student.",
+          "Action Blocked",
+          JOptionPane.WARNING_MESSAGE
+      );
+      return;
+    }
+
     String firstName = txtFirstName.getText() == null ? "" : txtFirstName.getText().trim();
     String middleName = txtMiddleName.getText() == null ? "" : txtMiddleName.getText().trim();
     String lastName = txtLastName.getText() == null ? "" : txtLastName.getText().trim();

@@ -2739,6 +2739,15 @@ public class StudentDashboard extends javax.swing.JFrame {
 			enrollment.setSubmittedAt(null);
 		}
 
+		if (EnrollmentPeriodService.getInstance().getCurrentEnrollmentPeriod().isPresent()) {
+			JOptionPane.showMessageDialog(
+					this,
+					"Action blocked: An enrollment period is currently active. Please wait until it closes before creating a new one.",
+					"Action Blocked",
+					JOptionPane.WARNING_MESSAGE);
+			return null;
+		}
+
 		if (!EnrollmentService.getInstance().createEnrollment(enrollment)) {
 			JOptionPane.showMessageDialog(this, "Failed to create enrollment.", "Error", JOptionPane.ERROR_MESSAGE);
 			return null;
