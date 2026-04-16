@@ -341,7 +341,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 	private void configureScheduleTable() {
 		DefaultTableModel model = new DefaultTableModel(
 				new Object[][] {},
-				new String[] { "Code", "Course Name", "Instructor", "Schedule", "Room", "Credits" }) {
+				new String[] { "Code", "Course Name", "Instructor", "Schedule", "Room", "Credits", "Status" }) {
 			@Override
 			public boolean isCellEditable(int row, int column) {
 				return false;
@@ -2589,10 +2589,6 @@ public class StudentDashboard extends javax.swing.JFrame {
 		List<EnrollmentDetail> validDetails = new ArrayList<>();
 
 		for (EnrollmentDetail ed : details) {
-			if (ed.getStatus() != EnrollmentDetailStatus.SELECTED) {
-				continue;
-			}
-
 			Optional<Offering> offering = OfferingService.getInstance().getOfferingById(ed.getOfferingId());
 			if (offering.isEmpty()) {
 				continue;
@@ -2600,7 +2596,9 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 			List<Schedule> schedules = ScheduleService.getInstance().getSchedulesByOffering(offering.get().getId());
 			if (!schedules.isEmpty()) {
-				schedulesPerOffering.put(offering.get().getId(), schedules);
+				if (ed.getStatus() == EnrollmentDetailStatus.SELECTED) {
+					schedulesPerOffering.put(offering.get().getId(), schedules);
+				}
 				validDetails.add(ed);
 			}
 		}
@@ -2654,6 +2652,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 				float units = ed.getUnits() == null
 						? (subject.get().getUnits() == null ? 0.0f : subject.get().getUnits())
 						: ed.getUnits();
+				String statusValue = ed.getStatus() == EnrollmentDetailStatus.DROPPED ? "Dropped" : "Active";
 
 				model.addRow(new Object[] {
 						safeText(subject.get().getSubjectCode(), "N/A"),
@@ -2661,7 +2660,8 @@ public class StudentDashboard extends javax.swing.JFrame {
 						facultyValue,
 						scheduleValue,
 						roomValue,
-						formatUnits(units)
+						formatUnits(units),
+						statusValue
 				});
 
 				// Apply conflict highlighting if needed
