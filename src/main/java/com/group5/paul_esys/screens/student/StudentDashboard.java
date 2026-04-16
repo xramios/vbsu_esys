@@ -26,7 +26,9 @@ import com.group5.paul_esys.modules.offerings.services.OfferingService;
 import com.group5.paul_esys.modules.rooms.model.Room;
 import com.group5.paul_esys.modules.rooms.services.RoomService;
 import com.group5.paul_esys.modules.schedules.model.Schedule;
+import com.group5.paul_esys.modules.schedules.model.ScheduleConflict;
 import com.group5.paul_esys.modules.schedules.services.ScheduleService;
+import com.group5.paul_esys.modules.schedules.services.ScheduleConflictAnalyzer;
 import com.group5.paul_esys.modules.sections.model.Section;
 import com.group5.paul_esys.modules.sections.services.SectionService;
 import com.group5.paul_esys.modules.semester.model.Semester;
@@ -39,6 +41,7 @@ import com.group5.paul_esys.modules.subjects.services.SubjectService;
 import com.group5.paul_esys.modules.users.services.UserSession;
 import com.group5.paul_esys.screens.shared.panels.SettingsPanel;
 import com.group5.paul_esys.screens.sign_in.SignIn;
+import com.group5.paul_esys.screens.student.components.ConflictTableCellRenderer;
 import com.group5.paul_esys.utils.ThemeManager;
 import java.awt.*;
 import java.awt.print.PrinterException;
@@ -127,6 +130,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 	};
 	private boolean hasActiveEnrollmentPeriod;
 	private float currentMaxEnrollmentUnits = DEFAULT_MAX_ENROLLMENT_UNITS;
+	private Map<Long, List<ScheduleConflict>> currentScheduleConflicts = new HashMap<>();
 	private int activeBackgroundTasks;
 
 	private record SubjectCatalogSnapshot(
@@ -2565,6 +2569,10 @@ public class StudentDashboard extends javax.swing.JFrame {
 		List<EnrollmentDetail> details = EnrollmentDetailService.getInstance()
 				.getEnrollmentDetailsByEnrollment(active.getId());
 
+		// Phase 1: Collect all offering schedules for conflict analysis
+		Map<Long, List<Schedule>> schedulesPerOffering = new HashMap<>();
+		List<EnrollmentDetail> validDetails = new ArrayList<>();
+
 		for (EnrollmentDetail ed : details) {
 			if (ed.getStatus() != EnrollmentDetailStatus.SELECTED) {
 				continue;
@@ -2575,17 +2583,40 @@ public class StudentDashboard extends javax.swing.JFrame {
 				continue;
 			}
 
+			List<Schedule> schedules = ScheduleService.getInstance().getSchedulesByOffering(offering.get().getId());
+			if (!schedules.isEmpty()) {
+				schedulesPerOffering.put(offering.get().getId(), schedules);
+				validDetails.add(ed);
+			}
+		}
+
+		// Phase 2: Analyze conflicts
+		currentScheduleConflicts = ScheduleConflictAnalyzer.getInstance().analyzeConflicts(schedulesPerOffering);
+
+		// Phase 3: Populate table with conflict highlighting
+		for (EnrollmentDetail ed : validDetails) {
+			Optional<Offering> offering = OfferingService.getInstance().getOfferingById(ed.getOfferingId());
+			if (offering.isEmpty()) {
+				continue;
+			}
+
 			Optional<Subject> subject = SubjectService.getInstance().getSubjectById(offering.get().getSubjectId());
 			Optional<Section> section = SectionService.getInstance().getSectionById(offering.get().getSectionId());
-			List<Schedule> schedules = ScheduleService.getInstance().getSchedulesByOffering(offering.get().getId());
+			List<Schedule> schedules = schedulesPerOffering.get(offering.get().getId());
 
 			StringBuilder schedString = new StringBuilder();
 			StringBuilder roomString = new StringBuilder();
 			StringBuilder facultyString = new StringBuilder();
+			boolean hasConflictInThisOffering = false;
 
 			for (Schedule sched : schedules) {
 				if (sched.getStartTime() == null || sched.getEndTime() == null) {
 					continue;
+				}
+
+				// Check if this specific schedule is involved in a conflict
+				if (currentScheduleConflicts.containsKey(sched.getId())) {
+					hasConflictInThisOffering = true;
 				}
 
 				schedString.append(sched.getDay().toString()).append(" ")
@@ -2617,8 +2648,62 @@ public class StudentDashboard extends javax.swing.JFrame {
 						roomValue,
 						formatUnits(units)
 				});
+
+				// Apply conflict highlighting if needed
+				int rowIndex = model.getRowCount() - 1;
+				applyConflictHighlighting(rowIndex, hasConflictInThisOffering, offering.get().getId());
 			}
 		}
+	}
+
+	/**
+	 * Applies conflict highlighting to a row in the schedule table.
+	 * Renders conflicting rows with background color and warning icon.
+	 */
+	private void applyConflictHighlighting(int rowIndex, boolean hasConflict, Long offeringId) {
+		if (!hasConflict) {
+			// Apply normal renderer
+			for (int col = 0; col < tableSchedules.getColumnCount(); col++) {
+				tableSchedules.getCellRenderer(rowIndex, col);
+			}
+			return;
+		}
+
+		// Apply conflict renderer to all columns
+		List<ScheduleConflict> conflicts = ScheduleConflictAnalyzer.getInstance()
+				.getConflictsForOffering(offeringId, new HashMap<>(), currentScheduleConflicts);
+
+		ConflictTableCellRenderer conflictRenderer = new ConflictTableCellRenderer(true, "⚠");
+		for (int col = 0; col < tableSchedules.getColumnCount(); col++) {
+			tableSchedules.getColumn(tableSchedules.getColumnName(col))
+					.setCellRenderer(conflictRenderer);
+		}
+
+		// Add tooltip with conflict details
+		if (!conflicts.isEmpty()) {
+			String tooltipText = buildConflictTooltip(conflicts);
+			tableSchedules.setToolTipText(tooltipText);
+		}
+	}
+
+	/**
+	 * Builds a tooltip string describing schedule conflicts.
+	 */
+	private String buildConflictTooltip(List<ScheduleConflict> conflicts) {
+		StringBuilder tooltip = new StringBuilder("<html>");
+		tooltip.append("<b>Schedule Conflicts Detected:</b><br>");
+
+		for (ScheduleConflict conflict : conflicts) {
+			tooltip.append("• ").append(conflict.getConflictSummary()).append("<br>");
+
+			for (ScheduleConflict.ConflictSubjectInfo subject : conflict.getConflictingSubjects()) {
+				tooltip.append("&nbsp;&nbsp; ").append(subject.getSubjectCode())
+						.append(" (").append(subject.getSectionCode()).append(")<br>");
+			}
+		}
+
+		tooltip.append("</html>");
+		return tooltip.toString();
 	}
 
 	private Enrollment resolveOrCreateEnrollment(Long enrollmentPeriodId, EnrollmentStatus initialStatus,
