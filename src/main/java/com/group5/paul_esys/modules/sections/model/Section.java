@@ -36,15 +36,6 @@ public class Section {
     return this;
   }
 
-  /**
-   * @deprecated Use {@link #getSectionCode()} instead.
-   * This is kept for backward compatibility but returns the section code.
-   */
-  @Deprecated
-  public String getSectionName() {
-    return sectionCode;
-  }
-
   public String getSectionCode() {
     return sectionCode;
   }

@@ -120,7 +120,7 @@ CREATE TABLE subjects
 CREATE TABLE sections
 (
     id           bigint NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    section_code varchar(64),
+    section_code varchar(64) NOT NULL,
     capacity     int    NOT NULL,
     status      varchar(16) CHECK (status IN ('OPEN', 'CLOSED', 'WAITLIST', 'DISSOLVED')) DEFAULT 'OPEN',
     updated_at   timestamp default current_timestamp,
@@ -531,5 +531,6 @@ ALTER TABLE offerings
 ALTER TABLE offerings
     ADD CONSTRAINT fk_offerings_semester_subject_map
         FOREIGN KEY (semester_subject_id, subject_id) REFERENCES semester_subjects (id, subject_id);
-C R E A T E   T A B L E   a u d i t _ l o g s   ( i d   b i g i n t   N O T   N U L L   G E N E R A T E D   A L W A Y S   A S   I D E N T I T Y   P R I M A R Y   K E Y ,   u s e r _ i d   v a r c h a r ( 6 4 ) ,   a c t i o n   v a r c h a r ( 6 4 )   N O T   N U L L ,   d e t a i l s   c l o b ,   c r e a t e d _ a t   t i m e s t a m p   D E F A U L T   C U R R E N T _ T I M E S T A M P ) ;  
+C R E A T E   T A B L E   a u d i t _ l o g s   ( i d   b i g i n t   N O T   N U L L   G E N E R A T E D   A L W A Y S   A S   I D E N T I T Y   P R I M A R Y   K E Y ,   u s e r _ i d   v a r c h a r ( 6 4 ) ,   a c t i o n   v a r c h a r ( 6 4 )   N O T   N U L L ,   d e t a i l s   c l o b ,   c r e a t e d _ a t   t i m e s t a m p   D E F A U L T   C U R R E N T _ T I M E S T A M P ) ; 
+ 
  

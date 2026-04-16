@@ -259,34 +259,37 @@ public class SectionForm extends javax.swing.JFrame {
                 jLabel2.setText("Add/Update Section");
                 jPanel1.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 60, 260, -1));
 
-                jPanel1.add(txtSectionCode, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 140, 260, -1));
+                jLabel3.setText("Section Name");
+                jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 100, 260, -1));
+                jPanel1.add(txtSectionName, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 120, 260, -1));
+                jPanel1.add(txtSectionCode, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 170, 260, -1));
 
                 jLabel4.setText("Section Code");
-                jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 120, 260, -1));
+                jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 150, 260, -1));
 
                 jLabel5.setText("Capacity");
-                jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 170, 260, -1));
+                jPanel1.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 200, 260, -1));
 
                 spinnerCapaity.setModel(new javax.swing.SpinnerNumberModel(0, 0, 1000, 1));
-                jPanel1.add(spinnerCapaity, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 200, 260, -1));
+                jPanel1.add(spinnerCapaity, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 230, 260, -1));
 
                 jLabel6.setText("Status");
-                jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 230, 260, -1));
+                jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 260, 260, -1));
 
                 cbxStatus.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-                jPanel1.add(cbxStatus, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 250, 260, -1));
+                jPanel1.add(cbxStatus, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 280, 260, -1));
 
                 btnSave.setBackground(new java.awt.Color(119, 0, 0));
                 btnSave.setForeground(new java.awt.Color(255, 255, 255));
                 btnSave.setText("Save");
                 btnSave.addActionListener(this::btnSaveActionPerformed);
-                jPanel1.add(btnSave, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 300, -1, -1));
+                jPanel1.add(btnSave, new org.netbeans.lib.awtextra.AbsoluteConstraints(200, 330, -1, -1));
 
                 btnCancel.setBackground(new java.awt.Color(119, 0, 0));
                 btnCancel.setForeground(new java.awt.Color(255, 255, 255));
                 btnCancel.setText("Cancel");
                 btnCancel.addActionListener(this::btnCancelActionPerformed);
-                jPanel1.add(btnCancel, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 300, -1, -1));
+                jPanel1.add(btnCancel, new org.netbeans.lib.awtextra.AbsoluteConstraints(110, 330, -1, -1));
 
                 javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
                 getContentPane().setLayout(layout);
@@ -345,12 +348,14 @@ public class SectionForm extends javax.swing.JFrame {
         private javax.swing.JComboBox<String> cbxStatus;
         private javax.swing.JLabel jLabel1;
         private javax.swing.JLabel jLabel2;
+        private javax.swing.JLabel jLabel3;
         private javax.swing.JLabel jLabel4;
         private javax.swing.JLabel jLabel5;
         private javax.swing.JLabel jLabel6;
         private javax.swing.JPanel jPanel1;
         private javax.swing.JSpinner spinnerCapaity;
         private javax.swing.JTextField txtSectionCode;
+        private javax.swing.JTextField txtSectionName;
         private com.group5.paul_esys.components.WindowBar windowBar1;
         // End of variables declaration//GEN-END:variables
 }

@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS subjects
 CREATE TABLE IF NOT EXISTS sections
 (
     id           bigint PRIMARY KEY AUTO_INCREMENT,
-    section_code varchar(48),
+    section_code varchar(48) NOT NULL,
     capacity     int NOT NULL,
     status       ENUM ('OPEN', 'CLOSED', 'WAITLIST', 'DISSOLVED') DEFAULT 'OPEN',
     updated_at   timestamp default current_timestamp(),
@@ -534,5 +534,6 @@ ALTER TABLE prerequisites
 
 ALTER TABLE prerequisites
     ADD CONSTRAINT fk_prereq_subject FOREIGN KEY (subject_id) REFERENCES subjects (id);
-C R E A T E   T A B L E   I F   N O T   E X I S T S   a u d i t _ l o g s   ( i d   b i g i n t   P R I M A R Y   K E Y   A U T O _ I N C R E M E N T ,   u s e r _ i d   v a r c h a r ( 6 4 ) ,   a c t i o n   v a r c h a r ( 6 4 )   N O T   N U L L ,   d e t a i l s   t e x t ,   c r e a t e d _ a t   t i m e s t a m p   D E F A U L T   C U R R E N T _ T I M E S T A M P ( ) ) ;  
+C R E A T E   T A B L E   I F   N O T   E X I S T S   a u d i t _ l o g s   ( i d   b i g i n t   P R I M A R Y   K E Y   A U T O _ I N C R E M E N T ,   u s e r _ i d   v a r c h a r ( 6 4 ) ,   a c t i o n   v a r c h a r ( 6 4 )   N O T   N U L L ,   d e t a i l s   t e x t ,   c r e a t e d _ a t   t i m e s t a m p   D E F A U L T   C U R R E N T _ T I M E S T A M P ( ) ) ; 
+ 
  
