@@ -33,7 +33,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb
 
+      - name: Download Apache Derby
+        run: |
+          curl -sSLo derby.tar.gz https://dlcdn.apache.org/derby/db-derby-10.17.1.0/db-derby-10.17.1.0-bin.tar.gz
+          tar xzf derby.tar.gz
+          mv db-derby-10.17.1.0-bin derby
+          ls -la derby
+
+      - name: Configure and start Derby Network Server
+        run: |
+          mkdir -p derby/system
+          cat > derby/system/derby.properties <<'EOF'
+          derby.drda.host=127.0.0.1
+          derby.drda.portNumber=1527
+          derby.connection.requireAuthentication=false
+          EOF
+          export DERBY_SYSTEM_HOME=$(pwd)/derby/system
+          nohup $(pwd)/derby/bin/startNetworkServer >/tmp/derby_ci.log 2>&1 &
+          # wait up to 30s for port 1527
+          for i in {1..30}; do ss -ltn | grep -q 1527 && break || sleep 1; done
+          ss -ltnp | grep 1527 || true
+
       - name: Build and run unit tests (headful Swing tests via Xvfb)
+        env:
+          DERBY_SYSTEM_HOME: ${{ github.workspace }}/derby/system
         run: |
           xvfb-run -a ./mvnw -B -V test
 
