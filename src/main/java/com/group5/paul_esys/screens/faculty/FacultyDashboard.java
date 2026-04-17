@@ -4,7 +4,11 @@
  */
 package com.group5.paul_esys.screens.faculty;
 
+import com.group5.paul_esys.modules.faculty.model.Faculty;
+import com.group5.paul_esys.modules.users.models.user.UserInformation;
+import com.group5.paul_esys.modules.users.services.UserSession;
 import com.group5.paul_esys.screens.faculty.panels.FacultyDashboardPanel;
+import com.group5.paul_esys.screens.registrar.panels.RegistrarSchedulesManagement;
 import com.group5.paul_esys.screens.shared.panels.SettingsPanel;
 
 /**
@@ -22,8 +26,30 @@ public class FacultyDashboard extends javax.swing.JFrame {
 		this.setUndecorated(true);
 		initComponents();
 		this.setLocationRelativeTo(null);
+
+		boolean departmentHead = isCurrentFacultyDepartmentHead();
 		tabbedPaneSideBar.add("Dashboard", new FacultyDashboardPanel());
+		if (departmentHead) {
+			tabbedPaneSideBar.add("Schedule Management", new RegistrarSchedulesManagement());
+		}
 		tabbedPaneSideBar.add("Security", new SettingsPanel());
+		if (departmentHead) {
+			windowBar1.setTitle("Faculty Head Dashboard");
+		}
+	}
+
+	private boolean isCurrentFacultyDepartmentHead() {
+		UserInformation<?> userInformation = UserSession.getInstance().getUserInformation();
+		if (userInformation == null) {
+			return false;
+		}
+
+		Object user = userInformation.getUser();
+		if (user instanceof Faculty faculty) {
+			return faculty.isDepartmentHead();
+		}
+
+		return false;
 	}
 
 	/**

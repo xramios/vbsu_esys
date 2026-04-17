@@ -15,6 +15,7 @@ import com.group5.paul_esys.modules.registrar.model.ScheduleOfferingOption;
 import com.group5.paul_esys.modules.registrar.model.ScheduleSaveResult;
 import com.group5.paul_esys.modules.registrar.model.ScheduleUpsertRequest;
 import com.group5.paul_esys.modules.subjects.model.SubjectSchedulePattern;
+import com.group5.paul_esys.modules.users.models.enums.Role;
 import com.group5.paul_esys.modules.users.models.user.UserInformation;
 import com.group5.paul_esys.modules.users.services.ConnectionService;
 import com.group5.paul_esys.modules.users.services.UserSession;
@@ -66,8 +67,23 @@ public class RegistrarScheduleManagementService {
     return INSTANCE;
   }
 
+  private Long getScopedDepartmentId() {
+    UserInformation<?> userInformation = UserSession.getInstance().getUserInformation();
+    if (userInformation == null || userInformation.getRole() != Role.FACULTY) {
+      return null;
+    }
+
+    Object user = userInformation.getUser();
+    if (user instanceof Faculty faculty && faculty.isDepartmentHead()) {
+      return faculty.getDepartmentId();
+    }
+
+    return null;
+  }
+
   public List<ScheduleManagementRow> getScheduleRows() {
-    String sql = """
+    Long filterDepartmentId = getScopedDepartmentId();
+    StringBuilder sqlBuilder = new StringBuilder("""
         SELECT
           s.id AS schedule_id,
           s.offering_id,
@@ -93,6 +109,13 @@ public class RegistrarScheduleManagementService {
         INNER JOIN subjects sub ON sub.id = o.subject_id
         LEFT JOIN rooms rm ON rm.id = s.room_id
         LEFT JOIN faculty fac ON fac.id = s.faculty_id
+        """);
+
+    if (filterDepartmentId != null) {
+      sqlBuilder.append(" WHERE sub.department_id = ? ");
+    }
+
+    sqlBuilder.append("""
         ORDER BY
           ep.created_at DESC,
           sec.section_code,
@@ -109,45 +132,50 @@ public class RegistrarScheduleManagementService {
           END,
           s.start_time,
           s.id
-        """;
+        """);
 
     List<ScheduleManagementRow> rows = new ArrayList<>();
     try (
         Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ResultSet rs = ps.executeQuery()
+        PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())
     ) {
-      while (rs.next()) {
-        Long enrollmentPeriodId = rsGetLong(rs, "enrollment_period_id");
+      if (filterDepartmentId != null) {
+        ps.setLong(1, filterDepartmentId);
+      }
 
-        rows.add(new ScheduleManagementRow(
-            rsGetLong(rs, "schedule_id"),
-            rsGetLong(rs, "offering_id"),
-            enrollmentPeriodId,
-            buildEnrollmentPeriodLabel(
-                enrollmentPeriodId,
-                rs.getString("school_year"),
-                rs.getString("semester")
-            ),
-            rsGetLong(rs, "section_id"),
-            safeText(rs.getString("section_code"), "N/A"),
-            safeText(rs.getString("subject_code"), "N/A"),
-            safeText(rs.getString("subject_name"), "N/A"),
-            safeText(rs.getString("day"), "N/A"),
-            rsGetLocalTime(rs, "start_time"),
-            rsGetLocalTime(rs, "end_time"),
-            rsGetLong(rs, "room_id"),
-            rs.getString("room_name"),
-            rsGetLong(rs, "faculty_id"),
-            buildFacultyDisplayName(
-                rs.getString("faculty_first_name"),
-                rs.getString("faculty_last_name")
-            ),
-            false,
-            false,
-            false,
-            false
-        ));
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          Long enrollmentPeriodId = rsGetLong(rs, "enrollment_period_id");
+
+          rows.add(new ScheduleManagementRow(
+              rsGetLong(rs, "schedule_id"),
+              rsGetLong(rs, "offering_id"),
+              enrollmentPeriodId,
+              buildEnrollmentPeriodLabel(
+                  enrollmentPeriodId,
+                  rs.getString("school_year"),
+                  rs.getString("semester")
+              ),
+              rsGetLong(rs, "section_id"),
+              safeText(rs.getString("section_code"), "N/A"),
+              safeText(rs.getString("subject_code"), "N/A"),
+              safeText(rs.getString("subject_name"), "N/A"),
+              safeText(rs.getString("day"), "N/A"),
+              rsGetLocalTime(rs, "start_time"),
+              rsGetLocalTime(rs, "end_time"),
+              rsGetLong(rs, "room_id"),
+              rs.getString("room_name"),
+              rsGetLong(rs, "faculty_id"),
+              buildFacultyDisplayName(
+                  rs.getString("faculty_first_name"),
+                  rs.getString("faculty_last_name")
+              ),
+              false,
+              false,
+              false,
+              false
+          ));
+        }
       }
     } catch (SQLException e) {
       logger.error("ERROR: {}", e.getMessage(), e);
@@ -158,7 +186,8 @@ public class RegistrarScheduleManagementService {
   }
 
   public List<ScheduleLookupOption> getEnrollmentPeriodOptions() {
-    String sql = """
+    Long filterDepartmentId = getScopedDepartmentId();
+    StringBuilder sqlBuilder = new StringBuilder("""
         SELECT DISTINCT
           ep.id,
           ep.school_year,
@@ -166,25 +195,40 @@ public class RegistrarScheduleManagementService {
           ep.created_at
         FROM offerings o
         INNER JOIN enrollment_period ep ON ep.id = o.enrollment_period_id
+        """);
+
+    if (filterDepartmentId != null) {
+      sqlBuilder.append("""
+        INNER JOIN subjects sub ON sub.id = o.subject_id
+        WHERE sub.department_id = ?
+        """);
+    }
+
+    sqlBuilder.append("""
         ORDER BY ep.created_at DESC, ep.id DESC
-        """;
+        """);
 
     List<ScheduleLookupOption> options = new ArrayList<>();
     try (
         Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ResultSet rs = ps.executeQuery()
+        PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())
     ) {
-      while (rs.next()) {
-        Long enrollmentPeriodId = rsGetLong(rs, "id");
-        options.add(new ScheduleLookupOption(
-            enrollmentPeriodId,
-            buildEnrollmentPeriodLabel(
-                enrollmentPeriodId,
-                rs.getString("school_year"),
-                rs.getString("semester")
-            )
-        ));
+      if (filterDepartmentId != null) {
+        ps.setLong(1, filterDepartmentId);
+      }
+
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          Long enrollmentPeriodId = rsGetLong(rs, "id");
+          options.add(new ScheduleLookupOption(
+              enrollmentPeriodId,
+              buildEnrollmentPeriodLabel(
+                  enrollmentPeriodId,
+                  rs.getString("school_year"),
+                  rs.getString("semester")
+              )
+          ));
+        }
       }
     } catch (SQLException e) {
       logger.error("ERROR: {}", e.getMessage(), e);
@@ -195,11 +239,7 @@ public class RegistrarScheduleManagementService {
   }
 
   public List<ScheduleOfferingOption> getOfferingOptions() {
-    UserInformation<?> userSession = UserSession.getInstance().getUserInformation();
-    Long filterDepartmentId = null;
-    if (userSession != null && userSession.getUser() instanceof Faculty faculty) {
-        filterDepartmentId = faculty.getDepartmentId();
-    }
+    Long filterDepartmentId = getScopedDepartmentId();
 
     StringBuilder sqlBuilder = new StringBuilder("""
         SELECT
@@ -350,22 +390,33 @@ public class RegistrarScheduleManagementService {
   }
 
   public List<ScheduleLookupOption> getFacultyOptions() {
-    String sql = "SELECT id, first_name, last_name FROM faculty ORDER BY last_name, first_name";
+    Long filterDepartmentId = getScopedDepartmentId();
+    StringBuilder sqlBuilder = new StringBuilder("SELECT id, first_name, last_name FROM faculty");
+    if (filterDepartmentId != null) {
+      sqlBuilder.append(" WHERE department_id = ?");
+    }
+    sqlBuilder.append(" ORDER BY last_name, first_name");
+
     List<ScheduleLookupOption> options = new ArrayList<>();
 
     try (
         Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ResultSet rs = ps.executeQuery()
+        PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())
     ) {
-      while (rs.next()) {
-        options.add(new ScheduleLookupOption(
-            rsGetLong(rs, "id"),
-            safeText(
-                buildFacultyDisplayName(rs.getString("first_name"), rs.getString("last_name")),
-                "N/A"
-            )
-        ));
+      if (filterDepartmentId != null) {
+        ps.setLong(1, filterDepartmentId);
+      }
+
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          options.add(new ScheduleLookupOption(
+              rsGetLong(rs, "id"),
+              safeText(
+                  buildFacultyDisplayName(rs.getString("first_name"), rs.getString("last_name")),
+                  "N/A"
+              )
+          ));
+        }
       }
     } catch (SQLException e) {
       logger.error("ERROR: {}", e.getMessage(), e);
@@ -376,7 +427,8 @@ public class RegistrarScheduleManagementService {
   }
 
   public List<ScheduleGenerationSectionOption> getSectionGenerationOptions() {
-    String sql = """
+    Long filterDepartmentId = getScopedDepartmentId();
+    StringBuilder sqlBuilder = new StringBuilder("""
         SELECT
           sec.id AS section_id,
           sec.section_code,
@@ -388,6 +440,16 @@ public class RegistrarScheduleManagementService {
         FROM offerings o
         INNER JOIN sections sec ON sec.id = o.section_id
         INNER JOIN enrollment_period ep ON ep.id = o.enrollment_period_id
+        """);
+
+    if (filterDepartmentId != null) {
+      sqlBuilder.append("""
+        INNER JOIN subjects sub ON sub.id = o.subject_id
+        WHERE sub.department_id = ?
+        """);
+    }
+
+    sqlBuilder.append("""
         GROUP BY
           sec.id,
           sec.section_code,
@@ -400,27 +462,32 @@ public class RegistrarScheduleManagementService {
           ep.created_at DESC,
           sec.section_code,
           sec.id
-        """;
+        """);
 
     List<ScheduleGenerationSectionOption> options = new ArrayList<>();
     try (
         Connection conn = ConnectionService.getConnection();
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ResultSet rs = ps.executeQuery()
+        PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())
     ) {
-      while (rs.next()) {
-        Long enrollmentPeriodId = rsGetLong(rs, "enrollment_period_id");
-        options.add(new ScheduleGenerationSectionOption(
-            rsGetLong(rs, "section_id"),
-            safeText(rs.getString("section_code"), "N/A"),
-            enrollmentPeriodId,
-            buildEnrollmentPeriodLabel(
-                enrollmentPeriodId,
-                rs.getString("school_year"),
-                rs.getString("semester")
-            ),
-            rs.getObject("effective_capacity", Integer.class)
-        ));
+      if (filterDepartmentId != null) {
+        ps.setLong(1, filterDepartmentId);
+      }
+
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          Long enrollmentPeriodId = rsGetLong(rs, "enrollment_period_id");
+          options.add(new ScheduleGenerationSectionOption(
+              rsGetLong(rs, "section_id"),
+              safeText(rs.getString("section_code"), "N/A"),
+              enrollmentPeriodId,
+              buildEnrollmentPeriodLabel(
+                  enrollmentPeriodId,
+                  rs.getString("school_year"),
+                  rs.getString("semester")
+              ),
+              rs.getObject("effective_capacity", Integer.class)
+          ));
+        }
       }
     } catch (SQLException e) {
       logger.error("ERROR: {}", e.getMessage(), e);
@@ -791,6 +858,7 @@ public class RegistrarScheduleManagementService {
       Long sectionId,
       Long enrollmentPeriodId
   ) throws SQLException {
+    Long filterDepartmentId = getScopedDepartmentId();
     String estimatedMinutesExpression = hasSubjectEstimatedTimeColumn(conn)
         ? "COALESCE(sub.estimated_time, " + DEFAULT_ESTIMATED_TIME_MINUTES + ")"
         : String.valueOf(DEFAULT_ESTIMATED_TIME_MINUTES);
@@ -799,7 +867,7 @@ public class RegistrarScheduleManagementService {
         ? "COALESCE(sub.schedule_pattern, '" + DEFAULT_SCHEDULE_PATTERN + "')"
         : "'" + DEFAULT_SCHEDULE_PATTERN + "'";
 
-    String sql = """
+    StringBuilder sqlBuilder = new StringBuilder("""
         SELECT
           o.id AS offering_id,
           sub.subject_code,
@@ -812,13 +880,25 @@ public class RegistrarScheduleManagementService {
         INNER JOIN sections sec ON sec.id = o.section_id
         WHERE o.section_id = ?
           AND o.enrollment_period_id = ?
+        """);
+
+    if (filterDepartmentId != null) {
+      sqlBuilder.append(" AND sub.department_id = ? ");
+    }
+
+    sqlBuilder.append("""
         ORDER BY sub.subject_code, o.id
-        """.formatted(schedulePatternExpression, estimatedMinutesExpression);
+        """);
+
+    String sql = sqlBuilder.toString().formatted(schedulePatternExpression, estimatedMinutesExpression);
 
     List<ScheduleGenerationOfferingCandidate> candidates = new ArrayList<>();
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
       ps.setLong(1, sectionId);
       ps.setLong(2, enrollmentPeriodId);
+      if (filterDepartmentId != null) {
+        ps.setLong(3, filterDepartmentId);
+      }
 
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
