@@ -57,7 +57,6 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
         tabbedPaneStudents.add("Students", null);
         tabbedPaneStudents.add("Sections", null);
         tabbedPaneStudents.add("Offerings", null);
-        tabbedPaneStudents.add("Schedules", null);
         tabbedPaneStudents.add("Enrollment Periods", null);
         tabbedPaneStudents.add("Drop Requests", null);
         tabbedPaneStudents.add("Settings", null);
@@ -66,9 +65,16 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
 
         tabbedPaneStudents.addChangeListener(evt -> {
             int selectedIndex = tabbedPaneStudents.getSelectedIndex();
-            if (selectedIndex >= 0 && !loadedTabs.contains(selectedIndex)) {
-                loadTab(selectedIndex);
+            if (selectedIndex < 0) {
+                return;
             }
+
+            if (!loadedTabs.contains(selectedIndex)) {
+                loadTab(selectedIndex);
+                return;
+            }
+
+            refreshTab(selectedIndex);
         });
     }
 
@@ -114,16 +120,40 @@ public final class RegistrarDashboard extends javax.swing.JFrame {
             case 1 -> new RegistrarStudentManagement();
             case 2 -> new RegistrarSectionsManagement();
             case 3 -> new RegistrarOfferingsManagement();
-            case 4 -> new RegistrarSchedulesManagement();
-            case 5 -> new RegistrarEnrollmentPeriodManagement();
-            case 6 -> new RegistrarDropRequestsManagement();
-            case 7 -> new SettingsPanel();
+            case 4 -> new RegistrarEnrollmentPeriodManagement();
+            case 5 -> new RegistrarDropRequestsManagement();
+            case 6 -> new SettingsPanel();
             default -> null;
         };
 
         if (panel != null) {
             tabbedPaneStudents.setComponentAt(tabIndex, panel);
             loadedTabs.add(tabIndex);
+        }
+    }
+
+    private void refreshTab(int tabIndex) {
+        JPanel panel = (JPanel) tabbedPaneStudents.getComponentAt(tabIndex);
+
+        switch (panel) {
+            case com.group5.paul_esys.screens.registrar.panels.RegistrarDashboard dashboardPanel ->
+                dashboardPanel.refreshData();
+            case RegistrarStudentManagement studentManagement ->
+                studentManagement.initializeStudents();
+            case RegistrarSectionsManagement sectionsManagement ->
+                sectionsManagement.refreshData();
+            case RegistrarOfferingsManagement offeringsManagement ->
+                offeringsManagement.refreshData();
+            case RegistrarSchedulesManagement schedulesManagement ->
+                schedulesManagement.refreshData();
+            case RegistrarEnrollmentPeriodManagement enrollmentPeriodManagement ->
+                enrollmentPeriodManagement.refreshData();
+            case RegistrarDropRequestsManagement dropRequestsManagement ->
+                dropRequestsManagement.refreshData();
+            case SettingsPanel settingsPanel ->
+                settingsPanel.refreshData();
+            default -> {
+            }
         }
     }
 
