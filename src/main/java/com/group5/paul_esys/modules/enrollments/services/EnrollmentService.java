@@ -150,7 +150,6 @@ public class EnrollmentService {
 
       // Rule: Auto-approve enrollment for students (Change SUBMITTED to APPROVED if rules pass)
       if (EnrollmentStatus.SUBMITTED.equals(enrollment.getStatus()) || EnrollmentStatus.ENROLLED.equals(enrollment.getStatus())) {
-          List<EnrollmentDetail> details = EnrollmentDetailService.getInstance().getEnrollmentDetailsByEnrollment(enrollment.getId());
           // Note: In create, we might not have the ID yet if it's auto-generated, or details might not be saved yet.
           // Usually, enrollment is created first as DRAFT, then updated to SUBMITTED.
       }
