@@ -44,6 +44,9 @@ public class OfferingForm extends javax.swing.JDialog {
      */
     public OfferingForm(Frame parent, boolean modal, Long preselectedEnrollmentPeriodId, Runnable onSavedCallback) {
         super(parent, modal);
+        // Remove the system window decoration so only the custom WindowBar is visible.
+        // Must be called before the dialog is realized (before initComponents()/pack()).
+        setUndecorated(true);
         this.preselectedEnrollmentPeriodId = preselectedEnrollmentPeriodId;
         this.onSavedCallback = onSavedCallback;
         initComponents();
