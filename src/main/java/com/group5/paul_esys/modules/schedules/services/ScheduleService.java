@@ -1,5 +1,6 @@
 package com.group5.paul_esys.modules.schedules.services;
 
+import com.group5.paul_esys.modules.audit.services.AuditService;
 import com.group5.paul_esys.modules.enums.DayOfWeek;
 import com.group5.paul_esys.modules.schedules.model.Schedule;
 import com.group5.paul_esys.modules.schedules.utils.ScheduleUtils;
@@ -160,7 +161,15 @@ public class ScheduleService {
       ps.setTime(5, schedule.getStartTime());
       ps.setTime(6, schedule.getEndTime());
       
-      return ps.executeUpdate() > 0;
+      int result = ps.executeUpdate();
+      if (result > 0) {
+        String details = "Schedule Created. Offering ID: " + schedule.getOfferingId() + 
+                         ", Room ID: " + schedule.getRoomId() + 
+                         ", Day: " + schedule.getDay().name();
+        AuditService.getInstance().logAction(String.valueOf(schedule.getFacultyId()), "SCHEDULE_CREATED", details);
+        return true;
+      }
+      return false;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;
@@ -180,7 +189,15 @@ public class ScheduleService {
       ps.setTime(6, schedule.getEndTime());
       ps.setLong(7, schedule.getId());
       
-      return ps.executeUpdate() > 0;
+      int result = ps.executeUpdate();
+      if (result > 0) {
+        String details = "Schedule Updated. Schedule ID: " + schedule.getId() + 
+                         ", Offering ID: " + schedule.getOfferingId() + 
+                         ", Room ID: " + schedule.getRoomId();
+        AuditService.getInstance().logAction(String.valueOf(schedule.getFacultyId()), "SCHEDULE_UPDATED", details);
+        return true;
+      }
+      return false;
     } catch (SQLException e) {
       logger.error("ERROR: " + e.getMessage(), e);
       return false;

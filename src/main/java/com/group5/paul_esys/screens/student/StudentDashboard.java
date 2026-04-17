@@ -4,7 +4,6 @@
  */
 package com.group5.paul_esys.screens.student;
 
-import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatMTGitHubIJTheme;
 import com.group5.paul_esys.modules.courses.model.Course;
 import com.group5.paul_esys.modules.courses.services.CourseService;
 import com.group5.paul_esys.modules.enrollment_period.model.EnrollmentPeriod;
@@ -48,6 +47,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -1130,14 +1130,14 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 
 		try {
-			return Float.parseFloat(value.toString().trim());
+			return Float.parseFloat(value.toString().trim().replace(",", "."));
 		} catch (NumberFormatException ex) {
 			return 0.0f;
 		}
 	}
 
 	private String formatUnits(float units) {
-		return String.format("%.1f", units);
+		return String.format(Locale.US, "%.1f", units);
 	}
 
 	/**

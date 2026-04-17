@@ -1,7 +1,6 @@
 package com.group5.paul_esys.modules.registrar.services;
 
 import com.group5.paul_esys.modules.enums.DayOfWeek;
-import com.group5.paul_esys.modules.faculty.model.Faculty;
 import com.group5.paul_esys.modules.registrar.model.ScheduleGenerationOfferingCandidate;
 import com.group5.paul_esys.modules.registrar.model.ScheduleGenerationPlanRow;
 import com.group5.paul_esys.modules.registrar.model.ScheduleGenerationRequest;
@@ -15,10 +14,8 @@ import com.group5.paul_esys.modules.registrar.model.ScheduleOfferingOption;
 import com.group5.paul_esys.modules.registrar.model.ScheduleSaveResult;
 import com.group5.paul_esys.modules.registrar.model.ScheduleUpsertRequest;
 import com.group5.paul_esys.modules.subjects.model.SubjectSchedulePattern;
-import com.group5.paul_esys.modules.users.models.enums.Role;
-import com.group5.paul_esys.modules.users.models.user.UserInformation;
 import com.group5.paul_esys.modules.users.services.ConnectionService;
-import com.group5.paul_esys.modules.users.services.UserSession;
+import com.group5.paul_esys.modules.audit.services.AuditService;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -68,16 +65,8 @@ public class RegistrarScheduleManagementService {
   }
 
   private Long getScopedDepartmentId() {
-    UserInformation<?> userInformation = UserSession.getInstance().getUserInformation();
-    if (userInformation == null || userInformation.getRole() != Role.FACULTY) {
-      return null;
-    }
-
-    Object user = userInformation.getUser();
-    if (user instanceof Faculty faculty && faculty.isDepartmentHead()) {
-      return faculty.getDepartmentId();
-    }
-
+    // Return null to remove department-specific filters. 
+    // This allows the Faculty Head to see ALL Registrar data (all offerings, subjects, etc.)
     return null;
   }
 
@@ -289,7 +278,7 @@ public class RegistrarScheduleManagementService {
               rs.getString("semester")
           );
 
-          Integer capacity = rs.getObject("effective_capacity", Integer.class);
+          Integer capacity = rsGetInteger(rs, "effective_capacity");
           String capacityLabel = capacity == null || capacity <= 0 ? "Open" : String.valueOf(capacity);
           String sectionCode = safeText(rs.getString("section_code"), "N/A");
           String subjectCode = safeText(rs.getString("subject_code"), "N/A");
@@ -485,7 +474,7 @@ public class RegistrarScheduleManagementService {
                   rs.getString("school_year"),
                   rs.getString("semester")
               ),
-              rs.getObject("effective_capacity", Integer.class)
+              rsGetInteger(rs, "effective_capacity")
           ));
         }
       }
@@ -904,8 +893,8 @@ public class RegistrarScheduleManagementService {
               safeText(rs.getString("subject_code"), "N/A"),
               safeText(rs.getString("subject_name"), "N/A"),
               normalizeSchedulePattern(rs.getString("schedule_pattern")),
-              rs.getObject("estimated_minutes", Integer.class),
-              rs.getObject("required_capacity", Integer.class)
+              rsGetInteger(rs, "estimated_minutes"),
+              rsGetInteger(rs, "required_capacity")
           ));
         }
       }
@@ -934,7 +923,7 @@ public class RegistrarScheduleManagementService {
             rsGetLong(rs, "id"),
             roomLabel,
             roomType,
-            rs.getObject("capacity", Integer.class)
+            rsGetInteger(rs, "capacity")
         ));
       }
     }
@@ -1416,6 +1405,9 @@ public class RegistrarScheduleManagementService {
         return new ScheduleSaveResult(false, "Failed to create schedule.");
       }
 
+      String details = "Schedule Created. Offering ID: " + request.offeringId() + ", Room ID: " + request.roomId() + ", Day: " + request.day().name();
+      AuditService.getInstance().logAction(String.valueOf(request.facultyId()), "SCHEDULE_CREATED", details);
+
       return new ScheduleSaveResult(true, "Schedule created successfully.");
     } catch (SQLException e) {
       logger.error("ERROR: {}", e.getMessage(), e);
@@ -1474,6 +1466,9 @@ public class RegistrarScheduleManagementService {
       if (updated <= 0) {
         return new ScheduleSaveResult(false, "Failed to update schedule.");
       }
+
+      String details = "Schedule Updated. Schedule ID: " + request.scheduleId() + ", Offering ID: " + request.offeringId() + ", Room ID: " + request.roomId();
+      AuditService.getInstance().logAction(String.valueOf(request.facultyId()), "SCHEDULE_UPDATED", details);
 
       return new ScheduleSaveResult(true, "Schedule updated successfully.");
     } catch (SQLException e) {
@@ -1606,6 +1601,13 @@ public class RegistrarScheduleManagementService {
       );
     }
 
+    if (request.roomId() != null && hasRoomCapacityConflict(conn, request)) {
+      return new ScheduleSaveResult(
+          false,
+          "Quota issue detected. The selected room capacity is smaller than the offering capacity."
+      );
+    }
+
     if (request.facultyId() != null && hasFacultyConflict(conn, request, isUpdate)) {
       return new ScheduleSaveResult(
           false,
@@ -1637,16 +1639,37 @@ public class RegistrarScheduleManagementService {
     }
   }
 
+
+  private record TargetOfferingVars(Long sectionId, Long enrollmentPeriodId) {}
+
+  private TargetOfferingVars lookupTargetOffering(Connection conn, Long offeringId) throws SQLException {
+    String sql = "SELECT section_id, enrollment_period_id FROM offerings WHERE id = ?";
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setLong(1, offeringId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          return new TargetOfferingVars(
+              rsGetLong(rs, "section_id"),
+              rsGetLong(rs, "enrollment_period_id")
+          );
+        }
+      }
+    }
+    return null;
+  }
+
   private boolean hasRoomConflict(Connection conn, ScheduleUpsertRequest request, boolean isUpdate) throws SQLException {
+    TargetOfferingVars target = lookupTargetOffering(conn, request.offeringId());
+    if (target == null || target.enrollmentPeriodId() == null) return false;
+
     String sql = isUpdate
         ? """
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
           WHERE s.room_id = ?
             AND s.day = ?
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND existing_o.enrollment_period_id = ?
             AND s.id <> ?
             AND s.start_time < ?
             AND s.end_time > ?
@@ -1656,19 +1679,18 @@ public class RegistrarScheduleManagementService {
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
           WHERE s.room_id = ?
             AND s.day = ?
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND existing_o.enrollment_period_id = ?
             AND s.start_time < ?
             AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setLong(1, request.offeringId());
-      ps.setLong(2, request.roomId());
-      ps.setString(3, request.day().name());
+      ps.setLong(1, request.roomId());
+      ps.setString(2, request.day().name());
+      ps.setLong(3, target.enrollmentPeriodId());
 
       int parameterIndex = 4;
       if (isUpdate) {
@@ -1684,16 +1706,50 @@ public class RegistrarScheduleManagementService {
     }
   }
 
+  private boolean hasRoomCapacityConflict(Connection conn, ScheduleUpsertRequest request) throws SQLException {
+    int roomCapacity = 0;
+    int offeringCapacity = 0;
+
+    String roomSql = "SELECT capacity FROM rooms WHERE id = ?";
+    try (PreparedStatement ps = conn.prepareStatement(roomSql)) {
+      ps.setLong(1, request.roomId());
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          roomCapacity = rs.getInt("capacity");
+        }
+      }
+    }
+
+    String offeringSql = """
+        SELECT COALESCE(o.capacity, sec.capacity) AS offering_capacity
+        FROM offerings o
+        INNER JOIN sections sec ON sec.id = o.section_id
+        WHERE o.id = ?
+        """;
+    try (PreparedStatement ps = conn.prepareStatement(offeringSql)) {
+      ps.setLong(1, request.offeringId());
+      try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+          offeringCapacity = rs.getInt("offering_capacity");
+        }
+      }
+    }
+
+    return roomCapacity < offeringCapacity;
+  }
+
   private boolean hasFacultyConflict(Connection conn, ScheduleUpsertRequest request, boolean isUpdate) throws SQLException {
+    TargetOfferingVars target = lookupTargetOffering(conn, request.offeringId());
+    if (target == null || target.enrollmentPeriodId() == null) return false;
+
     String sql = isUpdate
         ? """
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
           WHERE s.faculty_id = ?
             AND s.day = ?
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND existing_o.enrollment_period_id = ?
             AND s.id <> ?
             AND s.start_time < ?
             AND s.end_time > ?
@@ -1703,19 +1759,18 @@ public class RegistrarScheduleManagementService {
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
           WHERE s.faculty_id = ?
             AND s.day = ?
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+            AND existing_o.enrollment_period_id = ?
             AND s.start_time < ?
             AND s.end_time > ?
           FETCH FIRST 1 ROWS ONLY
           """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setLong(1, request.offeringId());
-      ps.setLong(2, request.facultyId());
-      ps.setString(3, request.day().name());
+      ps.setLong(1, request.facultyId());
+      ps.setString(2, request.day().name());
+      ps.setLong(3, target.enrollmentPeriodId());
 
       int parameterIndex = 4;
       if (isUpdate) {
@@ -1732,14 +1787,16 @@ public class RegistrarScheduleManagementService {
   }
 
   private boolean hasSectionConflict(Connection conn, ScheduleUpsertRequest request, boolean isUpdate) throws SQLException {
+    TargetOfferingVars target = lookupTargetOffering(conn, request.offeringId());
+    if (target == null || target.sectionId() == null || target.enrollmentPeriodId() == null) return false;
+
     String sql = isUpdate
         ? """
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
-          WHERE existing_o.section_id = target_o.section_id
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+          WHERE existing_o.section_id = ?
+            AND existing_o.enrollment_period_id = ?
             AND s.day = ?
             AND s.id <> ?
             AND s.start_time < ?
@@ -1750,9 +1807,8 @@ public class RegistrarScheduleManagementService {
           SELECT 1
           FROM schedules s
           INNER JOIN offerings existing_o ON existing_o.id = s.offering_id
-          INNER JOIN offerings target_o ON target_o.id = ?
-          WHERE existing_o.section_id = target_o.section_id
-            AND existing_o.enrollment_period_id = target_o.enrollment_period_id
+          WHERE existing_o.section_id = ?
+            AND existing_o.enrollment_period_id = ?
             AND s.day = ?
             AND s.start_time < ?
             AND s.end_time > ?
@@ -1760,10 +1816,11 @@ public class RegistrarScheduleManagementService {
           """;
 
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      ps.setLong(1, request.offeringId());
-      ps.setString(2, request.day().name());
+      ps.setLong(1, target.sectionId());
+      ps.setLong(2, target.enrollmentPeriodId());
+      ps.setString(3, request.day().name());
 
-      int parameterIndex = 3;
+      int parameterIndex = 4;
       if (isUpdate) {
         ps.setLong(parameterIndex++, request.scheduleId());
       }
@@ -1952,6 +2009,15 @@ public class RegistrarScheduleManagementService {
       Time value = rs.getTime(column);
       return value == null ? null : value.toLocalTime();
     } catch (SQLException e) {
+      return null;
+    }
+  }
+
+  private Integer rsGetInteger(ResultSet rs, String column) {
+    try {
+      int value = rs.getInt(column);
+      return rs.wasNull() ? null : value;
+    } catch (java.sql.SQLException e) {
       return null;
     }
   }
