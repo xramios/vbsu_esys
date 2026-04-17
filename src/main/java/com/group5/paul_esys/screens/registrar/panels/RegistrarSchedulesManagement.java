@@ -274,6 +274,10 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
     }.execute();
   }
 
+  public void refreshData() {
+    reloadSchedules();
+  }
+
   private void reloadEnrollmentPeriodFilterOptions() {
     String selectedLabel = cbxEnrollmentPeriod.getSelectedItem() == null
         ? FILTER_ALL

@@ -390,6 +390,10 @@ public class RegistrarSectionsManagement extends javax.swing.JPanel {
                 tableSections.repaint();
         }
 
+        public void refreshData() {
+                refreshSections();
+        }
+
         private void selectSectionById(Long sectionId) {
                 if (sectionId == null) {
                         return;

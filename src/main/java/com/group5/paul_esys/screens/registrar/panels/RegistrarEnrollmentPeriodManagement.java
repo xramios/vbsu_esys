@@ -123,6 +123,10 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
                 }.execute();
         }
 
+        public void refreshData() {
+                initializeEnrollmentPeriods();
+        }
+
         private void setControlsEnabled(boolean enabled) {
                 controlsEnabled = enabled;
                 btnAddPeriod.setEnabled(enabled);

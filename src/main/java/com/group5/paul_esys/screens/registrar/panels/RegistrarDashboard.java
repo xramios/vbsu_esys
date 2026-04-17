@@ -559,6 +559,10 @@ public class RegistrarDashboard extends javax.swing.JPanel {
                 }.execute();
         }
 
+        public void refreshData() {
+                reloadDashboardData();
+        }
+
         private void openScheduleFromSelectedRow() {
                 int selectedViewRow = tableStudents.getSelectedRow();
                 if (selectedViewRow < 0) {

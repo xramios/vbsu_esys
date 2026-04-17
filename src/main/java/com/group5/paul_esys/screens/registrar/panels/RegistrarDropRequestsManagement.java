@@ -130,6 +130,10 @@ public final class RegistrarDropRequestsManagement extends javax.swing.JPanel {
                 executeAsync(worker);
         }
 
+        public void refreshData() {
+                loadDropRequestsAsync();
+        }
+
         private DropRequestStatus resolveSelectedStatusFilter() {
                 Object selectedItem = cbxStatusFilter.getSelectedItem();
                 if (selectedItem == null) {

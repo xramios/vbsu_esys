@@ -857,6 +857,10 @@ public final class RegistrarStudentManagement extends javax.swing.JPanel {
                 });
 	}
 
+        public void refreshData() {
+                initializeStudents();
+        }
+
         private record StudentLoadResult(List<Student> students, Map<Long, String> courseLookup) {}
 
         // Variables declaration - do not modify//GEN-BEGIN:variables

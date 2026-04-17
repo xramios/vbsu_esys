@@ -94,6 +94,10 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
     reloadFilterOptionsAsync();
   }
 
+  public void refreshData() {
+    reloadFilterOptions();
+  }
+
   private void reloadFilterOptionsAsync() {
     suppressFilterEvents = true;
     try {
@@ -678,7 +682,7 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
 
                 btnRefresh.setBackground(new java.awt.Color(119, 0, 0));
                 btnRefresh.setForeground(new java.awt.Color(255, 255, 255));
-                btnRefresh.setText("Refresh Filters");
+                btnRefresh.setText("Refresh");
                 btnRefresh.addActionListener(this::btnRefreshActionPerformed);
 
                 btnPreview.setBackground(new java.awt.Color(119, 0, 0));
@@ -714,19 +718,17 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                                 "Subject Code", "Subject Name", "Section", "Capacity", "Semester Subject ID", "Already Exists"
                         }
                 ) {
-                        Class<?>[] types = new Class<?> [] {
+                  Class<?>[] types = new Class<?>[] {
                                 java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.Object.class, java.lang.Object.class, java.lang.String.class
                         };
                         boolean[] canEdit = new boolean [] {
                                 false, false, false, false, false, false
                         };
 
-                        @Override
-                        public Class<?> getColumnClass(int columnIndex) {
+                  public Class<?> getColumnClass(int columnIndex) {
                                 return types [columnIndex];
                         }
 
-                        @Override
                         public boolean isCellEditable(int rowIndex, int columnIndex) {
                                 return canEdit [columnIndex];
                         }
@@ -770,7 +772,7 @@ public class RegistrarOfferingsManagement extends javax.swing.JPanel {
                                                                         .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                                                        .addComponent(cbxCurriculum, 0, 207, Short.MAX_VALUE)
+                                                                        .addComponent(cbxCurriculum, 0, 219, Short.MAX_VALUE)
                                                                         .addComponent(cbxYearLevel, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                                                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)

@@ -32,6 +32,11 @@ public class SettingsPanel extends javax.swing.JPanel {
         loadThemeOptions();
     }
 
+    public void refreshData() {
+        loadUserInformation();
+        loadThemeOptions();
+    }
+
     private void loadUserInformation() {
         UserInformation<?> userInformation = UserSession.getInstance().getUserInformation();
         if (userInformation == null) {
