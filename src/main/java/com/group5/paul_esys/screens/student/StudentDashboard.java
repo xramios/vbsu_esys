@@ -51,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import com.group5.paul_esys.screens.student.models.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -112,22 +113,11 @@ public class StudentDashboard extends javax.swing.JFrame {
 	private int activeBackgroundTasks;
 
 
-	private record SubjectCatalogSnapshot(
-			boolean activeEnrollmentPeriod,
-			String announcementText,
-			String catalogLabel,
-			List<Object[]> rows) {
-	}
+	
 
-	private record SemesterProgressSnapshot(
-			String summaryText,
-			List<Object[]> rows) {
-	}
+	
 
-	private record CompletedSubjectsSnapshot(
-			String summaryText,
-			List<Object[]> rows) {
-	}
+	
 
 	/**
 	 * Creates new form Dashboard
