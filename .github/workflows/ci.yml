@@ -28,15 +28,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Install Xvfb (for GUI tests)
+      - name: Install Xvfb and unzip (for GUI tests and Derby)
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb unzip
 
       - name: Download Apache Derby
         run: |
-          curl -sSLo derby.tar.gz https://dlcdn.apache.org/derby/db-derby-10.17.1.0/db-derby-10.17.1.0-bin.tar.gz
-          tar xzf derby.tar.gz
+          set -e
+          curl -fSLo derby.zip "https://dlcdn.apache.org//db/derby/db-derby-10.17.1.0/db-derby-10.17.1.0-bin.zip"
+          unzip -q derby.zip
           mv db-derby-10.17.1.0-bin derby
           ls -la derby
 
