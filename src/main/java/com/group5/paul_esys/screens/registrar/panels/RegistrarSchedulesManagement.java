@@ -218,7 +218,7 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
           setForeground(new Color(38, 38, 38));
         }
 
-        if (column == 8) {
+        if (column == 9) {
           setHorizontalAlignment(SwingConstants.CENTER);
         } else {
           setHorizontalAlignment(SwingConstants.LEFT);
@@ -228,7 +228,11 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
       }
     };
 
-    for (int column = 0; column < tableSchedules.getColumnModel().getColumnCount(); column++) {
+    tableSchedules.getColumnModel().getColumn(0).setCellRenderer(
+        tableSchedules.getDefaultRenderer(Boolean.class)
+    );
+
+    for (int column = 1; column < tableSchedules.getColumnModel().getColumnCount(); column++) {
       tableSchedules.getColumnModel().getColumn(column).setCellRenderer(renderer);
     }
   }
@@ -946,20 +950,20 @@ public class RegistrarSchedulesManagement extends javax.swing.JPanel {
 
                 tableSchedules.setModel(new javax.swing.table.DefaultTableModel(
                         new Object [][] {
-                                {null, null, null, null, null, null, null, null, null},
-                                {null, null, null, null, null, null, null, null, null},
-                                {null, null, null, null, null, null, null, null, null},
-                                {null, null, null, null, null, null, null, null, null}
+                        {null, null, null, null, null, null, null, null, null, null},
+                        {null, null, null, null, null, null, null, null, null, null},
+                        {null, null, null, null, null, null, null, null, null, null},
+                        {null, null, null, null, null, null, null, null, null, null}
                         },
                         new String [] {
-                                "Subject Code", "Subject Name", "Section", "Day", "Time", "Room", "Faculty", "Enrollment Period", "Conflict"
+                        "Select", "Subject Code", "Subject Name", "Section", "Day", "Time", "Room", "Faculty", "Enrollment Period", "Conflict"
                         }
                 ) {
                         Class<?>[] types = new Class<?> [] {
-                                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
+                        java.lang.Boolean.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
                         };
                         boolean[] canEdit = new boolean [] {
-                                false, false, false, false, false, false, false, false, false
+                        true, false, false, false, false, false, false, false, false, false
                         };
 
                         @Override

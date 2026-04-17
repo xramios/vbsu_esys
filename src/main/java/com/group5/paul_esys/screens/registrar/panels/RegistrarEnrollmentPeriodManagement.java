@@ -48,6 +48,11 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
                 tableEnrollmentPeriods.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
                 tableEnrollmentPeriods.setRowHeight(28);
                 tableEnrollmentPeriods.setComponentPopupMenu(popMenu);
+                tableEnrollmentPeriods.getSelectionModel().addListSelectionListener(evt -> {
+                        if (!evt.getValueIsAdjusting()) {
+                                updateActionAvailability();
+                        }
+                });
 
                 resetStatusFilterModel();
                 registerTablePopupSelectionBehavior();
@@ -137,15 +142,32 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
         }
 
         private void updateActionAvailability() {
-                boolean mutationAllowed = controlsEnabled && !hasOpenEnrollmentPeriod();
+                boolean mutationAllowed = controlsEnabled;
 
                 btnAddPeriod.setEnabled(mutationAllowed);
-                menuItemUpdate.setEnabled(mutationAllowed);
+                menuItemUpdate.setEnabled(canUpdateSelectedEnrollmentPeriod());
                 menuItemDelete.setEnabled(mutationAllowed);
+        }
+
+        private boolean canUpdateSelectedEnrollmentPeriod() {
+                if (!controlsEnabled) {
+                        return false;
+                }
+
+                EnrollmentPeriod selectedPeriod = getSelectedEnrollmentPeriod();
+                if (selectedPeriod == null) {
+                        return false;
+                }
+
+                return !hasOpenEnrollmentPeriod() || isSelectedEnrollmentPeriodOpen(selectedPeriod);
         }
 
         private boolean hasOpenEnrollmentPeriod() {
                 return enrollmentPeriodService.getOpenEnrollmentPeriodExcluding(null).isPresent();
+        }
+
+        private boolean isSelectedEnrollmentPeriodOpen(EnrollmentPeriod selectedPeriod) {
+                return "OPEN".equals(EnrollmentPeriodUtils.resolveStatus(selectedPeriod));
         }
 
         private void applyFilters() {
@@ -225,7 +247,7 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
         }
 
         private void openUpdateEnrollmentPeriodForm() {
-                if (!controlsEnabled || hasOpenEnrollmentPeriod()) {
+                if (!controlsEnabled) {
                         JOptionPane.showMessageDialog(
                                 this,
                                 "Enrollment periods cannot be modified while an OPEN enrollment period exists.",
@@ -241,6 +263,16 @@ public class RegistrarEnrollmentPeriodManagement extends javax.swing.JPanel {
                                 this,
                                 "Please select an enrollment period to update.",
                                 "Update Enrollment Period",
+                                JOptionPane.WARNING_MESSAGE
+                        );
+                        return;
+                }
+
+                if (hasOpenEnrollmentPeriod() && !isSelectedEnrollmentPeriodOpen(selectedPeriod)) {
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Only the active OPEN enrollment period can be updated while one exists.",
+                                "Enrollment Period Locked",
                                 JOptionPane.WARNING_MESSAGE
                         );
                         return;
