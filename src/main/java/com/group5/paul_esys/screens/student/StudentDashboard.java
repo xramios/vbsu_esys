@@ -70,6 +70,9 @@ public class StudentDashboard extends javax.swing.JFrame {
 	private static final int CATALOG_COL_CODE = 1;
 	private static final int CATALOG_COL_SUBJECT_NAME = 2;
 	private static final int CATALOG_COL_UNITS = 3;
+	private static final int CATALOG_COL_SECTION = 4;
+	private static final int CATALOG_COL_SCHEDULE = 5;
+	private static final int CATALOG_COL_SLOTS = 6;
 	private static final int CATALOG_COL_OFFERING_ID = 7;
 	private static final int CATALOG_COL_SUBJECT_ID = 8;
 	private static final float MIN_SUBMISSION_UNITS = 18.0f;
@@ -135,6 +138,18 @@ public class StudentDashboard extends javax.swing.JFrame {
 		UIManager.put("TabbedPane.contentBorderInsets", new Insets(0, 0, 0, 0));
 		UIManager.put("TabbedPane.showContentSeparator", false);
 		ThemeManager.applySavedTheme();
+
+		if (UserSession.getInstance().getUserInformation() == null
+				|| !(UserSession.getInstance().getUserInformation().getUser() instanceof Student)) {
+			JOptionPane.showMessageDialog(
+					null,
+					"Your session has expired. Please sign in again.",
+					"Session Required",
+					JOptionPane.WARNING_MESSAGE);
+			SwingUtilities.invokeLater(() -> new SignIn().setVisible(true));
+			dispose();
+			return;
+		}
 
 		Student student = (Student) UserSession.getInstance()
 				.getUserInformation()
@@ -285,10 +300,27 @@ public class StudentDashboard extends javax.swing.JFrame {
 		tblSubjectCatalog.setModel(model);
 		tblSubjectCatalog.setRowHeight(26);
 		tblSubjectCatalog.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		tblSubjectCatalog.setAutoCreateRowSorter(true);
+		tblSubjectCatalog.setAutoCreateRowSorter(false);
+		tblSubjectCatalog.getTableHeader().setReorderingAllowed(false);
+		tblSubjectCatalog.getTableHeader().setResizingAllowed(false);
+		configureSubjectCatalogColumns();
 		hideTableColumn(tblSubjectCatalog, CATALOG_COL_OFFERING_ID);
 		hideTableColumn(tblSubjectCatalog, CATALOG_COL_SUBJECT_ID);
 		model.addTableModelListener(evt -> refreshSelectedSubjectsPreview());
+	}
+
+	private void configureSubjectCatalogColumns() {
+		TableColumn selectedColumn = tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_SELECTED);
+		selectedColumn.setMinWidth(80);
+		selectedColumn.setPreferredWidth(80);
+		selectedColumn.setMaxWidth(80);
+
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_CODE).setPreferredWidth(110);
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_SUBJECT_NAME).setPreferredWidth(220);
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_UNITS).setPreferredWidth(70);
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_SECTION).setPreferredWidth(90);
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_SCHEDULE).setPreferredWidth(180);
+		tblSubjectCatalog.getColumnModel().getColumn(CATALOG_COL_SLOTS).setPreferredWidth(80);
 	}
 
 	private void configureScheduleTable() {
@@ -308,16 +340,16 @@ public class StudentDashboard extends javax.swing.JFrame {
 private javax.swing.JTable tblSelectedSubjects;
         private final javax.swing.table.DefaultTableModel selectedSubjectsTableModel = new javax.swing.table.DefaultTableModel(
                 new Object[][] {},
-                new String[] { "Selected", "Subject Code", "Name", "Section", "Instructor", "Schedule", "Room", "Credits", "Offering ID" }
+		new String[] { "Subject Code", "Name", "Section", "Instructor", "Schedule", "Room", "Credits", "Offering ID" }
         ) {
                 @Override
                 public Class<?> getColumnClass(int columnIndex) {
-                        return columnIndex == 0 ? Boolean.class : (columnIndex == 8 ? Long.class : String.class);
+			return columnIndex == 7 ? Long.class : String.class;
                 }
 
                 @Override
                 public boolean isCellEditable(int row, int column) {
-                        return column == 0;
+			return false;
                 }
         };
         private boolean isUpdatingSelectedSubjects = false;
@@ -330,31 +362,9 @@ private javax.swing.JTable tblSelectedSubjects;
                 tblSelectedSubjects.getTableHeader().setResizingAllowed(false);
                 
                 // Hide offering ID
-                tblSelectedSubjects.getColumnModel().getColumn(8).setMinWidth(0);
-                tblSelectedSubjects.getColumnModel().getColumn(8).setMaxWidth(0);
-                tblSelectedSubjects.getColumnModel().getColumn(8).setWidth(0);
-
-                selectedSubjectsTableModel.addTableModelListener(evt -> {
-                        if (isUpdatingSelectedSubjects) return;
-                        int row = evt.getFirstRow();
-                        int col = evt.getColumn();
-                        if (col == 0 && row >= 0) {
-                                boolean isChecked = (boolean) selectedSubjectsTableModel.getValueAt(row, 0);
-                                if (!isChecked) {
-                                        Long offeringId = (Long) selectedSubjectsTableModel.getValueAt(row, 8);
-                                        transientSelectedOfferingIds.remove(offeringId);
-
-                                        javax.swing.table.DefaultTableModel catalogModel = (javax.swing.table.DefaultTableModel) tblSubjectCatalog.getModel();
-                                        for (int i = 0; i < catalogModel.getRowCount(); i++) {
-                                                Long catOffId = (Long) catalogModel.getValueAt(i, CATALOG_COL_OFFERING_ID);
-                                                if (catOffId != null && catOffId.equals(offeringId)) {
-                                                        catalogModel.setValueAt(false, i, CATALOG_COL_SELECTED);
-                                                        break;
-                                                }
-                                        }
-                                }
-                        }
-                });
+				tblSelectedSubjects.getColumnModel().getColumn(7).setMinWidth(0);
+				tblSelectedSubjects.getColumnModel().getColumn(7).setMaxWidth(0);
+				tblSelectedSubjects.getColumnModel().getColumn(7).setWidth(0);
 
                 jScrollPane3.setViewportView(tblSelectedSubjects);
 		refreshSelectedSubjectsPreview();
@@ -786,7 +796,6 @@ private javax.swing.JTable tblSelectedSubjects;
                         String roomValue = roomString.length() == 0 ? "TBA" : roomString.toString().trim();
 
                         selectedSubjectsTableModel.addRow(new Object[] {
-                                true,
                                 code,
                                 subjectName,
                                 section,
