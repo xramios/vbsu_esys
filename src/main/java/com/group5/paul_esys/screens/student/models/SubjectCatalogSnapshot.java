@@ -7,5 +7,6 @@ public record SubjectCatalogSnapshot(
     boolean activeEnrollmentPeriod,
     String announcementText,
     String catalogLabel,
-    List<Object[]> rows
+    List<Object[]> rows,
+    float enrollmentUnitLimit
 ) {}

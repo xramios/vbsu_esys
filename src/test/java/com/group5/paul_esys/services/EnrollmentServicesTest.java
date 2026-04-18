@@ -17,12 +17,18 @@ import com.group5.paul_esys.modules.enrollments.services.StudentSemesterProgress
 import com.group5.paul_esys.modules.students.model.Student;
 import com.group5.paul_esys.modules.students.model.StudentStatus;
 import com.group5.paul_esys.modules.students.services.StudentService;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import com.group5.paul_esys.testsupport.ServiceTestSupport;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class EnrollmentServicesTest extends ServiceTestSupport {
@@ -255,5 +261,46 @@ class EnrollmentServicesTest extends ServiceTestSupport {
   void studentEnrollmentEligibilityServiceRejectsBlankStudentId() {
     assertTrue(StudentEnrollmentEligibilityService.getInstance().getEligibleSemesterSubjectIds(" ", null, null).isEmpty());
     assertEquals(0.0f, StudentEnrollmentEligibilityService.getInstance().getCurrentSemesterUnitLimit(" ", null, null));
+  }
+
+  @Test
+  void studentEnrollmentEligibilityServiceResolvesCurrentSemesterUnitLimitFromCurriculum() throws Exception {
+    Connection connection = mock(Connection.class);
+    PreparedStatement studentStatement = mock(PreparedStatement.class);
+    PreparedStatement semesterStatement = mock(PreparedStatement.class);
+    PreparedStatement unitLimitStatement = mock(PreparedStatement.class);
+    ResultSet studentResultSet = mock(ResultSet.class);
+    ResultSet semesterResultSet = mock(ResultSet.class);
+    ResultSet unitLimitResultSet = mock(ResultSet.class);
+    DatabaseMetaData metadata = mock(DatabaseMetaData.class);
+    ResultSet yearLevelColumnResultSet = mock(ResultSet.class);
+
+    when(connection.prepareStatement(anyString()))
+        .thenReturn(studentStatement, semesterStatement, unitLimitStatement);
+    when(connection.getMetaData()).thenReturn(metadata);
+    when(metadata.getColumns(null, null, "SEMESTER", "YEAR_LEVEL")).thenReturn(yearLevelColumnResultSet);
+    when(yearLevelColumnResultSet.next()).thenReturn(true);
+
+    when(studentStatement.executeQuery()).thenReturn(studentResultSet);
+    when(studentResultSet.next()).thenReturn(true, false);
+    when(studentResultSet.getLong("curriculum_id")).thenReturn(10L);
+    when(studentResultSet.wasNull()).thenReturn(false);
+
+    when(semesterStatement.executeQuery()).thenReturn(semesterResultSet);
+    when(semesterResultSet.next()).thenReturn(true, false);
+    when(semesterResultSet.getLong("id")).thenReturn(100L);
+    when(semesterResultSet.getString("semester")).thenReturn("First Semester");
+    when(semesterResultSet.getTimestamp("created_at")).thenReturn(Timestamp.valueOf(LocalDateTime.of(2025, 1, 1, 0, 0)));
+    when(semesterResultSet.getInt("year_level")).thenReturn(1);
+    when(semesterResultSet.wasNull()).thenReturn(false);
+
+    when(unitLimitStatement.executeQuery()).thenReturn(unitLimitResultSet);
+    when(unitLimitResultSet.next()).thenReturn(true, false);
+    when(unitLimitResultSet.getFloat("total_units")).thenReturn(20.0f);
+
+    withConnection(connection, () -> assertEquals(
+        20.0f,
+        StudentEnrollmentEligibilityService.getInstance()
+            .getCurrentSemesterUnitLimit("20250001", "First Semester", 1L)));
   }
 }

@@ -6,6 +6,7 @@ package com.group5.paul_esys.screens.student;
 
 import com.group5.paul_esys.modules.courses.model.Course;
 import com.group5.paul_esys.modules.courses.services.CourseService;
+import com.group5.paul_esys.modules.curriculum.services.CurriculumService;
 import com.group5.paul_esys.modules.enrollment_period.model.EnrollmentPeriod;
 import com.group5.paul_esys.modules.enrollment_period.services.EnrollmentPeriodService;
 import com.group5.paul_esys.modules.enrollments.model.Enrollment;
@@ -76,7 +77,6 @@ public class StudentDashboard extends javax.swing.JFrame {
 	private static final int CATALOG_COL_OFFERING_ID = 7;
 	private static final int CATALOG_COL_SUBJECT_ID = 8;
 	private static final float MIN_SUBMISSION_UNITS = 18.0f;
-	private static final float MAX_ENROLLMENT_UNITS = 24.0f;
 	private static final DateTimeFormatter PROGRESS_TIMESTAMP_FORMATTER = DateTimeFormatter
 			.ofPattern("MMM d, yyyy h:mm a");
 
@@ -116,6 +116,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 	private boolean hasActiveEnrollmentPeriod;
 	private int activeBackgroundTasks;
 	private float selectedCatalogUnits;
+	private float currentEnrollmentUnitLimit;
 	private final Set<Long> transientSelectedOfferingIds = new HashSet<>();
 	private final Map<Long, Long> selectedSubjectIdsByOfferingId = new HashMap<>();
 	private final Set<Long> duplicateSelectedSubjectIds = new HashSet<>();
@@ -197,11 +198,15 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 	private void updateBackgroundState() {
 		boolean busy = activeBackgroundTasks > 0;
+		boolean withinEnrollmentLimit = !exceedsEnrollmentUnitLimit(selectedCatalogUnits);
 		setCursor(busy ? Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR) : Cursor.getDefaultCursor());
 		txtSearch.setEnabled(!busy);
 		btnSearchSubject.setEnabled(!busy);
-		btnSubmitSchedule.setEnabled(!busy && hasActiveEnrollmentPeriod && hasMinimumSubmissionUnits(selectedCatalogUnits));
-		btnSaveDraft.setEnabled(!busy && hasActiveEnrollmentPeriod);
+		btnSubmitSchedule.setEnabled(!busy
+				&& hasActiveEnrollmentPeriod
+				&& hasMinimumSubmissionUnits(selectedCatalogUnits)
+				&& withinEnrollmentLimit);
+		btnSaveDraft.setEnabled(!busy && hasActiveEnrollmentPeriod && withinEnrollmentLimit);
 	}
 
 	private void configureLogoutAction() {
@@ -659,7 +664,8 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 
 		selectedCatalogUnits = totalUnits;
-		jLabel17.setText(formatUnits(totalUnits) + " / " + formatUnits(MAX_ENROLLMENT_UNITS) + " units");
+		float displayLimit = resolveDisplayedEnrollmentUnitLimit(totalUnits);
+		jLabel17.setText(formatUnits(totalUnits) + " / " + formatUnits(displayLimit) + " units");
 		tblSelectedSubjects.repaint();
 		updateBackgroundState();
 	}
@@ -707,6 +713,51 @@ public class StudentDashboard extends javax.swing.JFrame {
 		return units + 0.0001f >= MIN_SUBMISSION_UNITS;
 	}
 
+	private boolean exceedsEnrollmentUnitLimit(float units) {
+		if (currentEnrollmentUnitLimit <= 0.0f) {
+			return false;
+		}
+
+		return units - currentEnrollmentUnitLimit > 0.0001f;
+	}
+
+	private float resolveDisplayedEnrollmentUnitLimit(float selectedUnits) {
+		if (currentEnrollmentUnitLimit > 0.0f) {
+			return currentEnrollmentUnitLimit;
+		}
+
+		return Math.max(0.0f, selectedUnits);
+	}
+
+	private float resolveCurrentSemesterUnitLimit(EnrollmentPeriod enrollmentPeriod) {
+		if (currentStudent == null || enrollmentPeriod == null) {
+			return 0.0f;
+		}
+
+		if (currentStudent.getStudentId() == null || currentStudent.getStudentId().isBlank()) {
+			return 0.0f;
+		}
+
+		float eligibilityDerivedLimit = StudentEnrollmentEligibilityService.getInstance()
+				.getCurrentSemesterUnitLimit(
+						currentStudent.getStudentId(),
+						enrollmentPeriod.getSemester(),
+						currentStudent.getYearLevel());
+		if (eligibilityDerivedLimit > 0.0f) {
+			return eligibilityDerivedLimit;
+		}
+
+		if (currentStudent.getCurriculumId() != null) {
+			float curriculumDerivedLimit = CurriculumService.getInstance()
+					.getTotalUnitsForSemester(currentStudent.getCurriculumId(), enrollmentPeriod.getSemester());
+			if (curriculumDerivedLimit > 0.0f) {
+				return curriculumDerivedLimit;
+			}
+		}
+
+		return 0.0f;
+	}
+
 	private void loadSubjectCatalogAsync(String keyword) {
 		executeDatabaseTask(
 				() -> fetchSubjectCatalogSnapshot(keyword),
@@ -727,10 +778,12 @@ public class StudentDashboard extends javax.swing.JFrame {
 					activePeriod,
 					"",
 					"Subject Catalog - No enrollment period configured",
-					List.of());
+					List.of(),
+					0.0f);
 		}
 
 		EnrollmentPeriod enrollmentPeriod = catalogEnrollmentPeriod.get();
+		float semesterUnitLimit = resolveCurrentSemesterUnitLimit(enrollmentPeriod);
 		String periodLabel = buildEnrollmentPeriodLabel(enrollmentPeriod);
 		String announcement = activePeriod ? "Enrollment Period is open" : "Enrollment Period has ended";
 		String catalogLabel = activePeriod
@@ -740,7 +793,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		List<Offering> offerings = OfferingService.getInstance()
 				.getScheduledOfferingsByEnrollmentPeriod(enrollmentPeriod.getId());
 		if (offerings.isEmpty()) {
-			return new SubjectCatalogSnapshot(activePeriod, announcement, catalogLabel, List.of());
+			return new SubjectCatalogSnapshot(activePeriod, announcement, catalogLabel, List.of(), semesterUnitLimit);
 		}
 
 		Set<Long> allowedSemesterSubjectIds = StudentEnrollmentEligibilityService.getInstance()
@@ -753,7 +806,8 @@ public class StudentDashboard extends javax.swing.JFrame {
 					activePeriod,
 					announcement,
 					"Subject Catalog - " + periodLabel + " (No eligible subjects for current semester progress)",
-					List.of());
+					List.of(),
+					semesterUnitLimit);
 		}
 
 		Map<Long, Subject> subjectById = new HashMap<>();
@@ -801,7 +855,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 			rows.add(buildSubjectCatalogRow(subject, section, offering, isSelected));
 		}
 
-		return new SubjectCatalogSnapshot(activePeriod, announcement, catalogLabel, rows);
+		return new SubjectCatalogSnapshot(activePeriod, announcement, catalogLabel, rows, semesterUnitLimit);
 	}
 
 	private Set<Long> getCompletedSubjectIds() {
@@ -835,6 +889,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 
 	private void applySubjectCatalogSnapshot(SubjectCatalogSnapshot snapshot) {
 		hasActiveEnrollmentPeriod = snapshot.activeEnrollmentPeriod();
+		currentEnrollmentUnitLimit = snapshot.enrollmentUnitLimit();
 		labelAnnouncement.setText(snapshot.announcementText());
 		jLabel14.setText(snapshot.catalogLabel());
 
@@ -2019,6 +2074,10 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 
 		EnrollmentPeriod enrollmentPeriod = activeEnrollmentPeriod.get();
+		float semesterUnitLimit = resolveCurrentSemesterUnitLimit(enrollmentPeriod);
+		if (semesterUnitLimit > 0.0f) {
+			currentEnrollmentUnitLimit = semesterUnitLimit;
+		}
 		Long activeEnrollmentPeriodId = enrollmentPeriod.getId();
 		Set<Long> allowedSemesterSubjectIds = StudentEnrollmentEligibilityService.getInstance()
 				.getEligibleSemesterSubjectIds(
@@ -2250,7 +2309,17 @@ public class StudentDashboard extends javax.swing.JFrame {
 			return;
 		}
 
-		Enrollment activeEnrollment = resolveOrCreateEnrollment(activeEnrollmentPeriodId, targetStatus);
+		if (semesterUnitLimit > 0.0f && totalSelectedUnits - semesterUnitLimit > 0.0001f) {
+			showValidationErrorAndRefresh(
+					"Validation Error",
+					"Selected units exceed your semester limit of "
+							+ formatUnits(semesterUnitLimit)
+							+ " units."
+				);
+			return;
+		}
+
+		Enrollment activeEnrollment = resolveOrCreateEnrollment(activeEnrollmentPeriodId, targetStatus, semesterUnitLimit);
 		if (activeEnrollment == null) {
 			return;
 		}
@@ -2329,7 +2398,9 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 
 		activeEnrollment.setStatus(targetStatus);
-		activeEnrollment.setMaxUnits(MAX_ENROLLMENT_UNITS);
+		if (semesterUnitLimit > 0.0f) {
+			activeEnrollment.setMaxUnits(semesterUnitLimit);
+		}
 		activeEnrollment.setTotalUnits(sumSelectedUnits(activeEnrollment.getId()));
 		if (targetStatus == EnrollmentStatus.SUBMITTED) {
 			if (activeEnrollment.getSubmittedAt() == null) {
@@ -2446,7 +2517,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 	}
 
-	private Enrollment resolveOrCreateEnrollment(Long enrollmentPeriodId, EnrollmentStatus initialStatus) {
+	private Enrollment resolveOrCreateEnrollment(Long enrollmentPeriodId, EnrollmentStatus initialStatus, float semesterUnitLimit) {
 		List<Enrollment> studentEnrollments = EnrollmentService.getInstance()
 				.getEnrollmentsByStudent(currentStudent.getStudentId());
 		for (Enrollment enrollment : studentEnrollments) {
@@ -2470,7 +2541,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		enrollment.setStudentId(currentStudent.getStudentId());
 		enrollment.setEnrollmentPeriodId(enrollmentPeriodId);
 		enrollment.setStatus(initialStatus);
-		enrollment.setMaxUnits(MAX_ENROLLMENT_UNITS);
+		enrollment.setMaxUnits(semesterUnitLimit > 0.0f ? semesterUnitLimit : null);
 		enrollment.setTotalUnits(0.0f);
 		if (initialStatus == EnrollmentStatus.SUBMITTED) {
 			enrollment.setSubmittedAt(new Date());
