@@ -145,6 +145,16 @@ class DatabaseManager:
 
         self.connection: Optional[Any] = None
 
+    def create_cursor(self) -> Any:
+        """Create a database cursor with MySQL-safe buffering."""
+        if self.connection is None:
+            raise RuntimeError("Database connection is not established")
+
+        if self.db_type == "mysql":
+            return self.connection.cursor(buffered=True)
+
+        return self.connection.cursor()
+
     def connect(self) -> bool:
         """Establish database connection.
 
@@ -169,11 +179,17 @@ class DatabaseManager:
         Returns:
             True if connection successful
         """
+        connect_kwargs: dict[str, Any] = {
+            "host": self.host,
+            "database": self.database,
+            "user": self.user,
+            "password": self.password,
+        }
+        if self.port is not None:
+            connect_kwargs["port"] = int(self.port)
+
         self.connection = mysql.connector.connect(
-            host=self.host,
-            database=self.database,
-            user=self.user,
-            password=self.password,
+            **connect_kwargs,
         )
         if self.connection.is_connected():
             print(f"Connected to MySQL database '{self.database}'")
@@ -234,7 +250,7 @@ class DatabaseManager:
         if self.db_type != "derby":
             return
 
-        cursor = self.connection.cursor()
+        cursor = self.create_cursor()
         try:
             prefixed_name = f"{self.adapter.get_table_prefix()}{table_name}"
             cursor.execute(create_sql.replace("TABLE_NAME", prefixed_name))
@@ -262,7 +278,7 @@ class DatabaseManager:
         """
         own_cursor = cursor is None
         if own_cursor:
-            cursor = self.connection.cursor()
+            cursor = self.create_cursor()
         try:
             query = self.adapter.build_insert_query(table_name, columns)
             cursor.execute(query, values)
@@ -281,7 +297,7 @@ class DatabaseManager:
             query: SQL query string
             params: Query parameters (optional)
         """
-        cursor = self.connection.cursor()
+        cursor = self.create_cursor()
         try:
             if params:
                 cursor.execute(query, params)

@@ -45,6 +45,7 @@ def create_parser() -> argparse.ArgumentParser:
         help="Database type to use",
     )
     parser.add_argument("--host", help="Database host")
+    parser.add_argument("--port", type=int, help="Database port")
     parser.add_argument("--database", help="Database name")
     parser.add_argument("--user", help="Database user")
     parser.add_argument("--password", help="Database password")
@@ -129,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
     config_defaults = DERBY_CONFIG if args.db_type == "derby" else DATABASE_CONFIG
 
     host = _resolve_db_value(args.host, config_defaults, "host")
+    default_port = config_defaults.get("port")
+    port = args.port if args.port is not None else default_port
     database = _resolve_db_value(args.database, config_defaults, "database")
     user = _resolve_db_value(args.user, config_defaults, "user")
     password = _resolve_db_value(args.password, config_defaults, "password")
@@ -140,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     db_manager = DatabaseManager(
         db_type=args.db_type,
         host=host,
-        port=config_defaults.get("port") if args.db_type == "derby" else None,
+        port=port,
         database=database,
         user=user,
         password=password,

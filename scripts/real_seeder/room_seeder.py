@@ -42,7 +42,7 @@ class RealRoomSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         try:
             existing_rooms = self._load_existing_rooms(cursor)
             rooms_created = 0
@@ -55,28 +55,18 @@ class RealRoomSeeder:
                     rooms_skipped += 1
                     continue
 
-                # Determine room type based on room code
                 if room_code.startswith("CLR"):
                     room_type = "LAB"
                 else:
                     room_type = "LECTURE"
 
-                if self.db_manager.db_type == "derby":
-                    self.db_manager.execute_insert(
-                        "rooms",
-                        ["building", "room_type", "status", "room", "capacity"],
-                        [self.BUILDING_NAME, room_type, "AVAILABLE", room_code, self.DEFAULT_CAPACITY],
-                        return_id=False,
-                        cursor=cursor,
-                    )
-                else:
-                    self.db_manager.execute_insert(
-                        "rooms",
-                        ["room", "capacity"],
-                        [room_code, self.DEFAULT_CAPACITY],
-                        return_id=False,
-                        cursor=cursor,
-                    )
+                self.db_manager.execute_insert(
+                    "rooms",
+                    ["building", "room_type", "status", "room", "capacity"],
+                    [self.BUILDING_NAME, room_type, "AVAILABLE", room_code, self.DEFAULT_CAPACITY],
+                    return_id=False,
+                    cursor=cursor,
+                )
                 rooms_created += 1
 
             self.db_manager.commit()

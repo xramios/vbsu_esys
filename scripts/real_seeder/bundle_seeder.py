@@ -36,12 +36,16 @@ class BsitNiten2023BundleSeeder:
     """Clears related tables and seeds only BSIT, NITEN2023, and students."""
 
     REQUIRED_TABLES: tuple[str, ...] = (
-        "courses",
         "admins",
+        "courses",
         "curriculum",
         "departments",
+        "faculty",
         "faculty_student_drop_requests",
+        "password_reset_tokens",
         "prerequisites",
+        "registrar",
+        "rooms",
         "semester",
         "semester_subjects",
         "student_semester_progress",
@@ -161,7 +165,7 @@ class BsitNiten2023BundleSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         reset_actions: list[str] = []
         try:
             print("Starting Derby bundle reset")
@@ -235,7 +239,7 @@ class BsitNiten2023BundleSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         try:
             missing_tables = self._find_missing_required_tables(cursor)
             if not missing_tables:
@@ -312,9 +316,14 @@ class BsitNiten2023BundleSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         cleared: list[str] = []
+        mysql_fk_checks_disabled = False
         try:
+            if self.db_manager.db_type == "mysql":
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+                mysql_fk_checks_disabled = True
+
             for table in self.TABLES_TO_CLEAR:
                 try:
                     cursor.execute(f"DELETE FROM {self._table(table)}")
@@ -323,9 +332,18 @@ class BsitNiten2023BundleSeeder:
                     if not self._is_ignorable_clear_error(error):
                         raise
 
+            if mysql_fk_checks_disabled:
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                mysql_fk_checks_disabled = False
+
             self.db_manager.commit()
             return tuple(cleared)
         except Exception:
+            if mysql_fk_checks_disabled:
+                try:
+                    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                except Exception:
+                    pass
             rollback = getattr(self.db_manager.connection, "rollback", None)
             if callable(rollback):
                 rollback()
@@ -340,6 +358,7 @@ class BsitNiten2023BundleSeeder:
             marker in message
             for marker in (
                 "does not exist",
+                "doesn't exist",
                 "not found",
                 "42x05",
                 "42s02",

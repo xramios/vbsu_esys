@@ -30,7 +30,7 @@ class RealStudentSemesterProgressSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         try:
             existing_pairs = self._load_existing_progress_pairs(cursor)
             students = self._load_students(cursor)
@@ -129,10 +129,11 @@ class RealStudentSemesterProgressSeeder:
             return None
 
         table = self._table("curriculum")
+        limit_clause = "FETCH FIRST 1 ROWS ONLY" if self.db_manager.db_type == "derby" else "LIMIT 1"
         query = (
             f"SELECT id FROM {table} "
             f"WHERE course = {self._placeholder} "
-            "ORDER BY cur_year DESC, created_at DESC FETCH FIRST 1 ROWS ONLY"
+            f"ORDER BY cur_year DESC, created_at DESC {limit_clause}"
         )
         cursor.execute(query, (course_id,))
         row = cursor.fetchone()
@@ -143,6 +144,7 @@ class RealStudentSemesterProgressSeeder:
     def _resolve_first_semester_id(self, cursor: Any, curriculum_id: int) -> int | None:
         table = self._table("semester")
         has_year_level = self._semester_has_year_level(cursor)
+        limit_clause = "FETCH FIRST 1 ROWS ONLY" if self.db_manager.db_type == "derby" else "LIMIT 1"
 
         semester_rank = (
             "CASE "
@@ -158,14 +160,14 @@ class RealStudentSemesterProgressSeeder:
                 f"SELECT id FROM {table} "
                 f"WHERE curriculum_id = {self._placeholder} "
                 f"ORDER BY year_level ASC, {semester_rank}, created_at ASC, id ASC "
-                "FETCH FIRST 1 ROWS ONLY"
+                f"{limit_clause}"
             )
         else:
             query = (
                 f"SELECT id FROM {table} "
                 f"WHERE curriculum_id = {self._placeholder} "
                 f"ORDER BY {semester_rank}, created_at ASC, id ASC "
-                "FETCH FIRST 1 ROWS ONLY"
+                f"{limit_clause}"
             )
 
         cursor.execute(query, (curriculum_id,))

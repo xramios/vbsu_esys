@@ -48,7 +48,7 @@ class RealStudentsSeeder:
         if not self.db_manager.connect():
             raise RuntimeError("Failed to connect to database")
 
-        cursor = self.db_manager.connection.cursor()
+        cursor = self.db_manager.create_cursor()
         try:
             course_id = self._resolve_course_id(cursor, course_hint)
             curriculum_id = self._resolve_curriculum_id(cursor, curriculum_name, course_id)

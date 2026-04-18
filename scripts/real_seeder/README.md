@@ -60,6 +60,19 @@ python -m real_seeder.cli \
 
 `bundle` is the default target, so `--target bundle` is optional.
 
+MySQL example:
+
+```bash
+python -m real_seeder.cli \
+  --db-type mysql \
+  --host localhost \
+  --port 3306 \
+  --database university_db \
+  --user root \
+  --password "" \
+  --faculty-count 10
+```
+
 ### Curriculum Target
 
 Run from the `scripts` directory:
@@ -88,6 +101,19 @@ python -m real_seeder.cli \
   --create-course-if-missing
 ```
 
+With explicit MySQL connection:
+
+```bash
+python -m real_seeder.cli \
+  --target curriculum \
+  --db-type mysql \
+  --host localhost \
+  --port 3306 \
+  --database university_db \
+  --user root \
+  --password ""
+```
+
 ### Students Target
 
 Seed users + students from `docs/students.csv` with fixed course/curriculum mapping:
@@ -99,6 +125,22 @@ python -m real_seeder.cli \
   --database university_db \
   --user app \
   --password derby \
+  --students-csv ../docs/students.csv \
+  --students-course BSIT \
+  --students-curriculum NITEN2023
+```
+
+MySQL example:
+
+```bash
+python -m real_seeder.cli \
+  --target students \
+  --db-type mysql \
+  --host localhost \
+  --port 3306 \
+  --database university_db \
+  --user root \
+  --password "" \
   --students-csv ../docs/students.csv \
   --students-course BSIT \
   --students-curriculum NITEN2023
@@ -123,5 +165,6 @@ Credential rules for bundle faculty/registrar/admin seeding:
 
 - Default CSV: `docs/ENROLLMENT SYSTEM CCP FINALS - Curriculum NITEN2023.csv`
 - Default curriculum name/year: `NITEN2023` / `2023`
+- Optional DB port override: `--port` (defaults from config when omitted)
 - Subject names are capped to 32 chars by default to align with current schema constraints (`--subject-name-max-length`).
 - Student target defaults: `--students-course BSIT`, `--students-curriculum NITEN2023`.
