@@ -2439,6 +2439,7 @@ public class StudentDashboard extends javax.swing.JFrame {
 		}
 
 		Enrollment enrollment = new Enrollment();
+		enrollment.setStudentId(currentStudent.getStudentId());
 		enrollment.setEnrollmentPeriodId(enrollmentPeriodId);
 		enrollment.setStatus(initialStatus);
 		enrollment.setMaxUnits(MAX_ENROLLMENT_UNITS);
