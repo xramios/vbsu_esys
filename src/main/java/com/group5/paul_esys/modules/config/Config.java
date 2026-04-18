@@ -4,10 +4,10 @@ public class Config {
 
   // Dito yung mga credentials para sa db connection
   public static final String DB_NAME = "sample";
-  // public static final String DB_URL = "jdbc:derby://localhost:1527/" + DB_NAME;
-  public static final String DB_URL = "jdbc:mysql://localhost:3306/" + DB_NAME;
+  public static final String DB_URL = "jdbc:derby://localhost:1527/" + DB_NAME;
+  // public static final String DB_URL = "jdbc:mysql://localhost:3306/" + DB_NAME;
   public static final String DB_SCHEMA = "APP";
-  public static final String DB_USER = "root";
-  public static final String DB_PASS = "1234";
-  public static final ConnectionType CONNECTION_TYPE = ConnectionType.MYSQL;
+  public static final String DB_USER = "app";
+  public static final String DB_PASS = "app";
+  public static final ConnectionType CONNECTION_TYPE = ConnectionType.DERBY;
 }
